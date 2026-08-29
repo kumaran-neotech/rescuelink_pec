@@ -14,10 +14,13 @@ dependencies:
   cupertino_icons: ^1.0.8
 
   nearby_connections: ^4.3.0
-  permission_handler: ^12.0.1
+  permission_handler: ^11.3.1
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   geolocator: ^14.0.2
+
+  vosk_flutter:
+    path: vosk_flutter_local
 
 dev_dependencies:
   flutter_test:
@@ -27,3 +30,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  assets:
+    - assets/models/vosk-model-small-en-us-0.15.zip

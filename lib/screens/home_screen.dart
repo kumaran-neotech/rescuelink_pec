@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'emergency_screen.dart';
 import 'my_request_screen.dart';
 import 'profile_screen.dart';
+import 'speech_screen.dart';
 import 'request_safety_screen.dart';
 import 'setting_screen.dart';
 import 'voluenteer_screen.dart';
@@ -15,11 +16,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-
-  void openScreen(
-    BuildContext context,
-    Widget screen,
-  ) {
+  void openScreen(BuildContext context, Widget screen) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -32,11 +29,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0B0F14),
-
       appBar: AppBar(
         backgroundColor: const Color(0xFF0B0F14),
         elevation: 0,
-
         title: const Row(
           children: [
             Icon(
@@ -54,22 +49,19 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-
         actions: [
           IconButton(
             tooltip: "Profile",
             onPressed: () {
-  openScreen(
-    context,
-    const ProfileScreen(),
-  );
-},
-            
+              openScreen(
+                context,
+                const ProfileScreen(),
+              );
+            },
             icon: const Icon(
               Icons.person_outline_rounded,
             ),
           ),
-
           IconButton(
             tooltip: "Settings",
             onPressed: () {
@@ -82,11 +74,9 @@ class _HomeScreenState extends State<HomeScreen> {
               Icons.settings_outlined,
             ),
           ),
-
           const SizedBox(width: 8),
         ],
       ),
-
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(
@@ -98,11 +88,6 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
-              // ==================================================
-              // WELCOME
-              // ==================================================
-
               const Text(
                 "Welcome back!",
                 style: TextStyle(
@@ -110,9 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   fontSize: 14,
                 ),
               ),
-
               const SizedBox(height: 5),
-
               const Text(
                 "Stay Safe. Stay Connected.",
                 style: TextStyle(
@@ -120,12 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-
               const SizedBox(height: 18),
-
-              // ==================================================
-              // OFFLINE STATUS
-              // ==================================================
 
               Container(
                 width: double.infinity,
@@ -144,9 +122,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: Colors.green,
                       size: 25,
                     ),
-
                     SizedBox(width: 12),
-
                     Expanded(
                       child: Column(
                         crossAxisAlignment:
@@ -170,7 +146,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                     ),
-
                     Icon(
                       Icons.check_circle_rounded,
                       color: Colors.green,
@@ -180,10 +155,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
 
               const SizedBox(height: 25),
-
-              // ==================================================
-              // MAIN SOS BUTTON
-              // ==================================================
 
               const Center(
                 child: Text(
@@ -198,12 +169,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 18),
 
+              // TAP & SPEAK
               Center(
                 child: GestureDetector(
                   onTap: () {
                     openScreen(
                       context,
-                      const EmergencyScreen(),
+                      const SpeechScreen(),
                     );
                   },
                   child: Container(
@@ -271,10 +243,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 30),
 
-              // ==================================================
-              // ALL SCREENS
-              // ==================================================
-
               const Text(
                 "RescueLink Services",
                 style: TextStyle(
@@ -285,7 +253,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 15),
 
-              // ROW 1
               Row(
                 children: [
                   Expanded(
@@ -302,16 +269,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                     ),
                   ),
-
-                 const SizedBox(width: 12),
-
                 ],
               ),
-              
 
               const SizedBox(height: 12),
 
-              // ROW 2
               Row(
                 children: [
                   Expanded(
@@ -328,9 +290,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                     ),
                   ),
-
                   const SizedBox(width: 12),
-
                   Expanded(
                     child: _serviceCard(
                       context,
@@ -350,7 +310,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 12),
 
-              // ROW 3
               Row(
                 children: [
                   Expanded(
@@ -367,22 +326,19 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                     ),
                   ),
-
                   const SizedBox(width: 12),
-
                   Expanded(
                     child: _serviceCard(
                       context,
                       icon: Icons.person_rounded,
-                     title: "Profile",
+                      title: "Profile",
                       subtitle: "My account",
                       onTap: () {
-  openScreen(
-    context,
-    const ProfileScreen(),
-  );
-},
-                      
+                        openScreen(
+                          context,
+                          const ProfileScreen(),
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -390,7 +346,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 12),
 
-              // ROW 4
               Row(
                 children: [
                   Expanded(
@@ -407,54 +362,43 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                     ),
                   ),
-
-                  const SizedBox(width: 12),
-
-                  
                 ],
               ),
-             const SizedBox(height: 28),
 
-// ==================================================
-// NEARBY SHARE
-// ==================================================
+              const SizedBox(height: 28),
 
-Row(
-  children: [
-    Expanded(
-      child: _serviceCard(
-        context,
-        icon: Icons.hub_rounded,
-        title: "Nearby Share",
-        subtitle: "Share SOS nearby",
-        onTap: () {
-          openScreen(
-            context,
-            const NearbyShareScreen(),
-          );
-        },
-      ),
-    ),
-  ],
-),
+              Row(
+                children: [
+                  Expanded(
+                    child: _serviceCard(
+                      context,
+                      icon: Icons.hub_rounded,
+                      title: "Nearby Share",
+                      subtitle: "Share SOS nearby",
+                      onTap: () {
+                        openScreen(
+                          context,
+                          const NearbyShareScreen(),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
 
-const SizedBox(height: 28),
+              const SizedBox(height: 28),
 
-// ==================================================
-// RESCUE NETWORK
-// ==================================================
+              const Text(
+                "Rescue Network",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
 
-const Text(
-  "Rescue Network",
-  style: TextStyle(
-    fontSize: 20,
-    fontWeight: FontWeight.bold,
-  ),
-),
+              const SizedBox(height: 15),
 
-const SizedBox(height: 15),
-
-GestureDetector(
+              GestureDetector(
                 onTap: () {
                   _showNetworkDialog(context);
                 },
@@ -470,10 +414,8 @@ GestureDetector(
                   ),
                   child: Column(
                     children: [
-
                       Row(
                         children: [
-
                           Container(
                             width: 52,
                             height: 52,
@@ -489,9 +431,7 @@ GestureDetector(
                               size: 28,
                             ),
                           ),
-
                           const SizedBox(width: 14),
-
                           const Expanded(
                             child: Column(
                               crossAxisAlignment:
@@ -515,7 +455,6 @@ GestureDetector(
                               ],
                             ),
                           ),
-
                           const Icon(
                             Icons.arrow_forward_ios_rounded,
                             size: 16,
@@ -564,10 +503,6 @@ GestureDetector(
 
               const SizedBox(height: 25),
 
-              // ==================================================
-              // EMERGENCY TIP
-              // ==================================================
-
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(18),
@@ -579,15 +514,12 @@ GestureDetector(
                   crossAxisAlignment:
                       CrossAxisAlignment.start,
                   children: [
-
                     Icon(
                       Icons.lightbulb_outline_rounded,
                       color: Color(0xFFFF6B00),
                       size: 27,
                     ),
-
                     SizedBox(width: 13),
-
                     Expanded(
                       child: Column(
                         crossAxisAlignment:
@@ -627,15 +559,11 @@ GestureDetector(
                 ),
               ),
             ],
+          ),
         ),
       ),
-    ),
     );
   }
-
-  // ============================================================
-  // SERVICE CARD
-  // ============================================================
 
   Widget _serviceCard(
     BuildContext context, {
@@ -660,14 +588,14 @@ GestureDetector(
           crossAxisAlignment:
               CrossAxisAlignment.start,
           children: [
-
             Container(
               width: 43,
               height: 43,
               decoration: BoxDecoration(
                 color: const Color(0xFFFF6B00)
                     .withOpacity(0.12),
-                borderRadius: BorderRadius.circular(13),
+                borderRadius:
+                    BorderRadius.circular(13),
               ),
               child: Icon(
                 icon,
@@ -703,10 +631,6 @@ GestureDetector(
     );
   }
 
-  // ============================================================
-  // NETWORK NODE
-  // ============================================================
-
   Widget _networkNode() {
     return Container(
       width: 14,
@@ -727,17 +651,12 @@ GestureDetector(
     );
   }
 
-  // ============================================================
-  // NETWORK DIALOG
-  // ============================================================
-
   void _showNetworkDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           backgroundColor: const Color(0xFF151B23),
-
           title: const Row(
             children: [
               Icon(
@@ -748,11 +667,9 @@ GestureDetector(
               Text("Rescue Network"),
             ],
           ),
-
           content: const Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-
               ListTile(
                 leading: Icon(
                   Icons.circle,
@@ -762,7 +679,6 @@ GestureDetector(
                 title: Text("Rescue Node 01"),
                 subtitle: Text("Connected"),
               ),
-
               ListTile(
                 leading: Icon(
                   Icons.circle,
@@ -772,7 +688,6 @@ GestureDetector(
                 title: Text("Rescue Node 02"),
                 subtitle: Text("Connected"),
               ),
-
               ListTile(
                 leading: Icon(
                   Icons.circle,
@@ -782,7 +697,6 @@ GestureDetector(
                 title: Text("Rescue Node 03"),
                 subtitle: Text("Connected"),
               ),
-
               ListTile(
                 leading: Icon(
                   Icons.circle,
@@ -794,7 +708,6 @@ GestureDetector(
               ),
             ],
           ),
-
           actions: [
             TextButton(
               onPressed: () {
@@ -813,4 +726,3 @@ GestureDetector(
     );
   }
 }
-
