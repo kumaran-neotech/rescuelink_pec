@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
 import 'storage_service.dart';
+import '../app_data.dart';
 import 'home_screen.dart';
 
 class LoginSignupScreen extends StatefulWidget {
@@ -87,40 +88,79 @@ class _LoginSignupScreenState extends State<LoginSignupScreen> {
   }
 
   
-     Future<void> submit() async {
-    if (_formKey.currentState?.validate() ?? false) {
-      try {
-        await StorageService.saveUser({
-          "name": isLogin ? "User" : nameController.text.trim(),
-          "email": emailController.text.trim(),
-          "phone": isLogin ? "" : phoneController.text.trim(),
-        });
+    Future<void> submit() async {
+  if (_formKey.currentState?.validate() ?? false) {
 
-        if (!mounted) return;
+    // CHECK EMAIL
+    if (!isLogin &&
+        AppData.instance.emailExists(
+          emailController.text.trim(),
+        )) {
 
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const HomeScreen(),
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Email already registered",
           ),
-        );
+        ),
+      );
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              isLogin ? "Login successful" : "Account created successfully",
-            ),
+      return;
+    }
+
+    // CHECK PHONE
+    if (!isLogin &&
+        AppData.instance.phoneExists(
+          phoneController.text.trim(),
+        )) {
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Phone number already registered",
           ),
-        );
-      } catch (e) {
-        debugPrint("Storage error: $e");
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error saving user: $e")),
-        );
-      }
+        ),
+      );
+
+      return;
+    }
+
+    try {
+
+      await StorageService.saveUser({
+        "name": isLogin
+            ? "User"
+            : nameController.text.trim(),
+        "email": emailController.text.trim(),
+        "phone": isLogin
+            ? ""
+            : phoneController.text.trim(),
+      });
+
+      AppData.instance.setUser(
+        name: isLogin
+            ? "User"
+            : nameController.text.trim(),
+        email: emailController.text.trim(),
+        phone: isLogin
+            ? ""
+            : phoneController.text.trim(),
+      );
+
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) =>
+              const HomeScreen(),
+        ),
+      );
+    } catch (e) {
+      debugPrint("Storage error: $e");
     }
   }
+}
 
   @override
   Widget build(BuildContext context) {

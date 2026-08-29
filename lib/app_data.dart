@@ -81,11 +81,19 @@ class AppData extends ChangeNotifier {
   }
 
   bool isVolunteerEmail(String email) {
-    return volunteerEmails.contains(
-      email.trim().toLowerCase(),
-    );
-  }
+  return volunteerEmails.contains(
+    email.trim().toLowerCase(),
+  );
+}
 
+bool emailExists(String email) {
+  return userEmail.toLowerCase() ==
+      email.toLowerCase();
+}
+
+bool phoneExists(String phone) {
+  return userPhone == phone;
+}
   void setVolunteer({
     required String name,
     required String email,
@@ -99,6 +107,7 @@ class AppData extends ChangeNotifier {
 
     notifyListeners();
   }
+  
 
   void addRequest({
     required String ticketId,
