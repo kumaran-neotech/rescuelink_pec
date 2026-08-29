@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'screens/login_signup_screen.dart'; // <-- updated import path
+import 'screens/login_signup_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
