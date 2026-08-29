@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'edit_profile_screen.dart';
+import 'login_signup_screen.dart';
 import '../app_data.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -208,6 +209,68 @@ class _ProfileScreenState extends State<ProfileScreen> {
       },
     );
   }
+  void logout() {
+  showDialog(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        backgroundColor: const Color(0xFF151B23),
+        title: const Text(
+          "Logout",
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: const Text(
+          "Are you sure you want to logout?",
+          style: TextStyle(
+            color: Colors.white70,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: const Text(
+              "CANCEL",
+              style: TextStyle(
+                color: Colors.white54,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+
+              // Go back to Login / Sign Up screen
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                builder: (context) =>
+                      LoginSignupScreen(),
+                ),
+                (route) => false,
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor:
+                  const Color(0xFFFF6B00),
+            ),
+            child: const Text(
+              "LOGOUT",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      );
+    },
+  );
+}
 
   @override
   Widget build(BuildContext context) {
