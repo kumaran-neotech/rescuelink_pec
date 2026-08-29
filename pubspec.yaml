@@ -1,0 +1,26 @@
+name: rescuelink_pec_01
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  cupertino_icons: ^1.0.8
+  permission_handler: ^11.4.0
+  geolocator: ^14.0.2
+    
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
