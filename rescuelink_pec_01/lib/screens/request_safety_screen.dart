@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../app_data.dart';
 
 class RequestSafetyScreen extends StatefulWidget {
   const RequestSafetyScreen({super.key});
@@ -10,130 +11,319 @@ class RequestSafetyScreen extends StatefulWidget {
 
 class _RequestSafetyScreenState
     extends State<RequestSafetyScreen> {
-  bool safeMode = false;
+
+  String? selectedHelp;
+  String? selectedUrgency;
+  int people = 1;
+
+  final TextEditingController locationController =
+      TextEditingController();
+
+  final List<String> helpTypes = [
+    "Medical Assistance",
+    "Food & Water",
+    "Shelter",
+    "Evacuation",
+    "Rescue Team",
+    "First Aid",
+    "Missing Person",
+    "Other",
+  ];
+
+  final List<String> urgencyTypes = [
+    "Critical",
+    "Urgent",
+    "Normal",
+  ];
+
+  @override
+  void dispose() {
+    locationController.dispose();
+    super.dispose();
+  }
+
+  void submitRequest() {
+    if (selectedHelp == null) {
+      _message("Please select the type of help required");
+      return;
+    }
+
+    if (selectedUrgency == null) {
+      _message("Please select urgency");
+      return;
+    }
+
+    if (locationController.text.trim().isEmpty) {
+      _message("Please enter your location");
+      return;
+    }
+
+  AppData.instance.addRequest(
+  type: "Safety: $selectedHelp",
+  victims: people,
+  location: locationController.text.trim(),
+  priority: selectedUrgency!,
+  message: "Safety assistance requested: $selectedHelp",
+);
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF151B23),
+          title: const Text("Request Submitted"),
+          content: const Text(
+            "Your safety request has been added successfully.",
+            style: TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pop(context);
+              },
+              child: const Text(
+                "DONE",
+                style: TextStyle(
+                  color: Color(0xFFFF6B00),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _message(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.redAccent,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF0B0F14),
+
       appBar: AppBar(
+        backgroundColor: const Color(0xFF0B0F14),
+        elevation: 0,
         title: const Text(
           "Request Safety",
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        centerTitle: true,
       ),
+
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(22),
+        padding: const EdgeInsets.all(20),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 15),
 
-            const Text(
-              "Need Immediate Help?",
-              style: TextStyle(
-                fontSize: 27,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            const Text(
-              "Send your safety request to nearby RescueLink users.",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white54,
-              ),
-            ),
-
-            const SizedBox(height: 40),
-
-            // BIG MIC
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  safeMode = !safeMode;
-                });
-              },
+            Center(
               child: Container(
-                width: 175,
-                height: 175,
+                width: 95,
+                height: 95,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: safeMode
-                      ? Colors.red
-                      : const Color(0xFFFF6B00),
-                  boxShadow: [
-                    BoxShadow(
-                      color: (safeMode
-                              ? Colors.red
-                              : const Color(0xFFFF6B00))
-                          .withOpacity(0.3),
-                      blurRadius: 35,
-                      spreadRadius: 7,
-                    ),
-                  ],
+                  color: const Color(0xFFFF6B00)
+                      .withOpacity(0.12),
                 ),
                 child: const Icon(
-                  Icons.mic_rounded,
-                  size: 85,
-                  color: Colors.white,
+                  Icons.health_and_safety_rounded,
+                  size: 50,
+                  color: Color(0xFFFF6B00),
                 ),
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 25),
 
-            Text(
-              safeMode
-                  ? "Safety request active"
-                  : "Tap to request safety",
-              style: const TextStyle(
-                fontSize: 18,
+            const Text(
+              "What help do you need?",
+              style: TextStyle(
+                fontSize: 19,
                 fontWeight: FontWeight.bold,
               ),
             ),
 
-            const SizedBox(height: 35),
+            const SizedBox(height: 15),
 
-            _safetyOption(
-              Icons.home_work_outlined,
-              "Shelter Required",
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: helpTypes.map((help) {
+                final selected = selectedHelp == help;
+
+                return ChoiceChip(
+                  label: Text(help),
+                  selected: selected,
+                  onSelected: (_) {
+                    setState(() {
+                      selectedHelp = help;
+                    });
+                  },
+                  selectedColor:
+                      const Color(0xFFFF6B00),
+                  backgroundColor:
+                      const Color(0xFF151B23),
+                  labelStyle: TextStyle(
+                    color: selected
+                        ? Colors.white
+                        : Colors.white70,
+                    fontWeight: FontWeight.w600,
+                  ),
+                );
+              }).toList(),
             ),
 
-            _safetyOption(
-              Icons.local_hospital_outlined,
-              "Medical Assistance",
+            const SizedBox(height: 28),
+
+            const Text(
+              "Number of People",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
 
-            _safetyOption(
-              Icons.water_drop_outlined,
-              "Food / Water",
-            ),
+            const SizedBox(height: 12),
 
-            _safetyOption(
-              Icons.directions_car_outlined,
-              "Evacuation",
+            Row(
+              children: [
+                IconButton(
+                  onPressed: () {
+                    if (people > 1) {
+                      setState(() {
+                        people--;
+                      });
+                    }
+                  },
+                  icon: const Icon(
+                    Icons.remove_circle,
+                    color: Color(0xFFFF6B00),
+                  ),
+                ),
+
+                Text(
+                  "$people",
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+                IconButton(
+                  onPressed: () {
+                    if (people < 100) {
+                      setState(() {
+                        people++;
+                      });
+                    }
+                  },
+                  icon: const Icon(
+                    Icons.add_circle,
+                    color: Color(0xFFFF6B00),
+                  ),
+                ),
+              ],
             ),
 
             const SizedBox(height: 20),
+
+            const Text(
+              "Urgency",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            Wrap(
+              spacing: 10,
+              children: urgencyTypes.map((urgency) {
+                final selected =
+                    selectedUrgency == urgency;
+
+                return ChoiceChip(
+                  label: Text(urgency),
+                  selected: selected,
+                  onSelected: (_) {
+                    setState(() {
+                      selectedUrgency = urgency;
+                    });
+                  },
+                  selectedColor:
+                      const Color(0xFFFF6B00),
+                  backgroundColor:
+                      const Color(0xFF151B23),
+                  labelStyle: TextStyle(
+                    color: selected
+                        ? Colors.white
+                        : Colors.white70,
+                  ),
+                );
+              }).toList(),
+            ),
+
+            const SizedBox(height: 25),
+
+            const Text(
+              "Location",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            TextField(
+              controller: locationController,
+              style: const TextStyle(
+                color: Colors.white,
+              ),
+              decoration: InputDecoration(
+                hintText: "Enter your location",
+                prefixIcon: const Icon(
+                  Icons.location_on_outlined,
+                  color: Color(0xFFFF6B00),
+                ),
+                filled: true,
+                fillColor: const Color(0xFF151B23),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 30),
 
             SizedBox(
               width: double.infinity,
-              height: 55,
+              height: 56,
               child: ElevatedButton(
-                onPressed: () {},
+                onPressed: submitRequest,
                 style: ElevatedButton.styleFrom(
                   backgroundColor:
                       const Color(0xFFFF6B00),
-                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius:
+                        BorderRadius.circular(15),
                   ),
                 ),
                 child: const Text(
-                  "REQUEST SAFETY",
+                  "SUBMIT SAFETY REQUEST",
                   style: TextStyle(
+                    color: Colors.white,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -141,43 +331,6 @@ class _RequestSafetyScreenState
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _safetyOption(
-    IconData icon,
-    String title,
-  ) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(17),
-      decoration: BoxDecoration(
-        color: const Color(0xFF151B23),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            color: const Color(0xFFFF6B00),
-            size: 27,
-          ),
-          const SizedBox(width: 15),
-          Text(
-            title,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const Spacer(),
-          const Icon(
-            Icons.arrow_forward_ios,
-            size: 15,
-            color: Colors.white38,
-          ),
-        ],
       ),
     );
   }

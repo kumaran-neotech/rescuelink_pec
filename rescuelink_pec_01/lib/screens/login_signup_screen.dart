@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
 import 'home_screen.dart';
+import '../app_data.dart';
 
 class LoginSignupScreen extends StatefulWidget {
   const LoginSignupScreen({super.key});
@@ -85,10 +86,22 @@ class _LoginSignupScreenState extends State<LoginSignupScreen> {
     return null;
   }
 
-  void submit() {
-    if (_formKey.currentState!.validate()) {
-     void submit() {
+// ==========================================================
+// SUBMIT LOGIN / SIGN UP
+// ==========================================================
+
+// ==========================================================
+// SUBMIT LOGIN / SIGN UP
+// ==========================================================
+
+void submit() {
   if (_formKey.currentState!.validate()) {
+    AppData.instance.setUser(
+      name: nameController.text.trim(),
+      email: emailController.text.trim(),
+      phone: phoneController.text.trim(),
+    );
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
@@ -96,21 +109,7 @@ class _LoginSignupScreenState extends State<LoginSignupScreen> {
       ),
     );
   }
-  }else {
-        debugPrint("Account creation successful");
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            isLogin
-                ? "Login successful"
-                : "Account created successfully",
-          ),
-        ),
-      );
-    }
-  }
+}
 
   @override
   Widget build(BuildContext context) {

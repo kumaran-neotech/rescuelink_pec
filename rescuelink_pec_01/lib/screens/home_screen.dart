@@ -1,6 +1,4 @@
-
 import 'package:flutter/material.dart';
-
 import 'emergency_screen.dart';
 import 'my_request_screen.dart';
 import 'profile_screen.dart';
@@ -8,11 +6,21 @@ import 'request_safety_screen.dart';
 import 'setting_screen.dart';
 import 'text_screen.dart';
 import 'voluenteer_screen.dart';
+import 'nearby_share_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
-  void openScreen(BuildContext context, Widget screen) {
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+
+  void openScreen(
+    BuildContext context,
+    Widget screen,
+  ) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -52,11 +60,12 @@ class HomeScreen extends StatelessWidget {
           IconButton(
             tooltip: "Profile",
             onPressed: () {
-              openScreen(
-                context,
-                const ProfileScreen(),
-              );
-            },
+  openScreen(
+    context,
+    const ProfileScreen(),
+  );
+},
+            
             icon: const Icon(
               Icons.person_outline_rounded,
             ),
@@ -67,7 +76,7 @@ class HomeScreen extends StatelessWidget {
             onPressed: () {
               openScreen(
                 context,
-                const SettingsScreen(),
+                const SettingScreen(),
               );
             },
             icon: const Icon(
@@ -283,7 +292,7 @@ class HomeScreen extends StatelessWidget {
                   Expanded(
                     child: _serviceCard(
                       context,
-                      icon: Icons.emergency_rounded,
+                      icon: Icons.warning_amber_rounded,
                       title: "Emergency",
                       subtitle: "Report SOS",
                       onTap: () {
@@ -297,20 +306,7 @@ class HomeScreen extends StatelessWidget {
 
                   const SizedBox(width: 12),
 
-                  Expanded(
-                    child: _serviceCard(
-                      context,
-                      icon: Icons.message_rounded,
-                      title: "Text SOS",
-                      subtitle: "Send message",
-                      onTap: () {
-                        openScreen(
-                          context,
-                          const TextScreen(),
-                        );
-                      },
-                    ),
-                  ),
+                  
                 ],
               ),
 
@@ -379,14 +375,15 @@ class HomeScreen extends StatelessWidget {
                     child: _serviceCard(
                       context,
                       icon: Icons.person_rounded,
-                      title: "Profile",
+                     title: "Profile",
                       subtitle: "My account",
                       onTap: () {
-                        openScreen(
-                          context,
-                          const ProfileScreen(),
-                        );
-                      },
+  openScreen(
+    context,
+    const ProfileScreen(),
+  );
+},
+                      
                     ),
                   ),
                 ],
@@ -406,7 +403,7 @@ class HomeScreen extends StatelessWidget {
                       onTap: () {
                         openScreen(
                           context,
-                          const SettingsScreen(),
+                          const SettingScreen(),
                         );
                       },
                     ),
@@ -414,40 +411,51 @@ class HomeScreen extends StatelessWidget {
 
                   const SizedBox(width: 12),
 
-                  Expanded(
-                    child: _serviceCard(
-                      context,
-                      icon: Icons.mic_rounded,
-                      title: "Voice SOS",
-                      subtitle: "Speak emergency",
-                      onTap: () {
-                        openScreen(
-                          context,
-                          const EmergencyScreen(),
-                        );
-                      },
-                    ),
-                  ),
+                  
                 ],
               ),
+             const SizedBox(height: 28),
 
-              const SizedBox(height: 28),
+// ==================================================
+// NEARBY SHARE
+// ==================================================
 
-              // ==================================================
-              // RESCUE NETWORK
-              // ==================================================
+Row(
+  children: [
+    Expanded(
+      child: _serviceCard(
+        context,
+        icon: Icons.hub_rounded,
+        title: "Nearby Share",
+        subtitle: "Share SOS nearby",
+        onTap: () {
+          openScreen(
+            context,
+            const NearbyShareScreen(),
+          );
+        },
+      ),
+    ),
+  ],
+),
 
-              const Text(
-                "Rescue Network",
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+const SizedBox(height: 28),
 
-              const SizedBox(height: 15),
+// ==================================================
+// RESCUE NETWORK
+// ==================================================
 
-              GestureDetector(
+const Text(
+  "Rescue Network",
+  style: TextStyle(
+    fontSize: 20,
+    fontWeight: FontWeight.bold,
+  ),
+),
+
+const SizedBox(height: 15),
+
+GestureDetector(
                 onTap: () {
                   _showNetworkDialog(context);
                 },
