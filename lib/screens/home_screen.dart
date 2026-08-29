@@ -4,7 +4,6 @@ import 'my_request_screen.dart';
 import 'profile_screen.dart';
 import 'request_safety_screen.dart';
 import 'setting_screen.dart';
-import 'text_screen.dart';
 import 'voluenteer_screen.dart';
 import 'nearby_share_screen.dart';
 

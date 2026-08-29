@@ -1,6 +1,20 @@
 
 import 'package:flutter/material.dart';
 
+class UserData {
+  final String name;
+  final String email;
+  final String phone;
+  final String password;
+
+  UserData({
+    required this.name,
+    required this.email,
+    required this.phone,
+    required this.password,
+  });
+}
+
 class RescueRequest {
   final String id;
   final String type;
@@ -42,23 +56,24 @@ class AppData extends ChangeNotifier {
   static final AppData instance = AppData._privateConstructor();
 
   // ==========================================================
-  // CURRENT USER DATA
+  // REGISTERED USER
+  // ==========================================================
+
+  UserData? registeredUser;
+
+  // ==========================================================
+  // CURRENT LOGIN STATUS
+  // ==========================================================
+
+  bool isLoggedIn = false;
+
+  // ==========================================================
+  // CURRENT USER INFORMATION
   // ==========================================================
 
   String userName = "";
   String userEmail = "";
   String userPhone = "";
-
-  // ==========================================================
-  // REGISTERED USER LOGIN DATA
-  // ==========================================================
-
-  String registeredName = "";
-  String registeredEmail = "";
-  String registeredPhone = "";
-  String registeredPassword = "";
-
-  bool isLoggedIn = false;
 
   // ==========================================================
   // VOLUNTEER DATA
@@ -92,21 +107,28 @@ class AppData extends ChangeNotifier {
     required String phone,
     required String password,
   }) {
-    final cleanEmail = email.trim().toLowerCase();
+    final normalizedEmail = email.trim().toLowerCase();
 
     // Prevent duplicate email registration.
-    if (registeredEmail.isNotEmpty &&
-        registeredEmail == cleanEmail) {
+    if (registeredUser != null &&
+        registeredUser!.email.toLowerCase() == normalizedEmail) {
       return false;
     }
 
-    registeredName = name.trim();
-    registeredEmail = cleanEmail;
-    registeredPhone = phone.trim();
-    registeredPassword = password;
+    registeredUser = UserData(
+      name: name.trim(),
+      email: normalizedEmail,
+      phone: phone.trim(),
+      password: password,
+    );
 
-    // Signup does NOT automatically login.
+    // Do NOT automatically login after signup.
     isLoggedIn = false;
+
+    // Clear current profile until login.
+    userName = "";
+    userEmail = "";
+    userPhone = "";
 
     notifyListeners();
 
@@ -121,29 +143,44 @@ class AppData extends ChangeNotifier {
     required String email,
     required String password,
   }) {
-    final cleanEmail = email.trim().toLowerCase();
+    if (registeredUser == null) {
+      return false;
+    }
+
+    final normalizedEmail = email.trim().toLowerCase();
 
     // Check email and password.
-    if (registeredEmail.isEmpty ||
-        registeredPassword.isEmpty) {
-      return false;
+    if (registeredUser!.email.toLowerCase() == normalizedEmail &&
+        registeredUser!.password == password) {
+      // Login successful.
+      isLoggedIn = true;
+
+      // Store the registered information in current user.
+      userName = registeredUser!.name;
+      userEmail = registeredUser!.email;
+      userPhone = registeredUser!.phone;
+
+      notifyListeners();
+
+      return true;
     }
 
-    if (cleanEmail != registeredEmail ||
-        password != registeredPassword) {
-      return false;
-    }
+    return false;
+  }
 
-    // Login successful.
-    userName = registeredName;
-    userEmail = registeredEmail;
-    userPhone = registeredPhone;
+  // ==========================================================
+  // LOGOUT
+  // ==========================================================
 
-    isLoggedIn = true;
+  void logout() {
+    isLoggedIn = false;
+
+    // Clear currently logged-in profile.
+    userName = "";
+    userEmail = "";
+    userPhone = "";
 
     notifyListeners();
-
-    return true;
   }
 
   // ==========================================================
@@ -171,34 +208,25 @@ class AppData extends ChangeNotifier {
     required String email,
     required String phone,
   }) {
-    userName = name.trim();
-    userEmail = email.trim().toLowerCase();
-    userPhone = phone.trim();
+    userName = name;
+    userEmail = email;
+    userPhone = phone;
 
     // Also update registered account information.
-    registeredName = userName;
-    registeredEmail = userEmail;
-    registeredPhone = userPhone;
+    if (registeredUser != null) {
+      registeredUser = UserData(
+        name: name,
+        email: email.trim().toLowerCase(),
+        phone: phone,
+        password: registeredUser!.password,
+      );
+    }
 
     notifyListeners();
   }
 
   // ==========================================================
-  // LOGOUT
-  // ==========================================================
-
-  void logout() {
-    userName = "";
-    userEmail = "";
-    userPhone = "";
-
-    isLoggedIn = false;
-
-    notifyListeners();
-  }
-
-  // ==========================================================
-  // VOLUNTEER EMAIL CHECK
+  // CHECK VOLUNTEER EMAIL
   // ==========================================================
 
   bool isVolunteerEmail(String email) {
