@@ -12,6 +12,10 @@ class BluetoothService {
 
   static Future<bool> startMeshMode() async {
     try {
+      // Ensure no stale advertising/discovery session is left running
+      // from a previous failed attempt (causes STATUS_ALREADY_ADVERTISING).
+      await stopMeshMode();
+
       final permissionsGranted =
           await _nearbyService.requestNearbyPermissions();
 
@@ -28,6 +32,8 @@ class BluetoothService {
 
       if (!advertisingStarted || !discoveryStarted) {
         print('Failed to start nearby mesh mode.');
+        // Roll back whichever half succeeded so a retry starts clean.
+        await stopMeshMode();
         return false;
       }
 
@@ -36,6 +42,7 @@ class BluetoothService {
       return true;
     } catch (e) {
       print('Mesh Mode Error: $e');
+      await stopMeshMode();
       return false;
     }
   }

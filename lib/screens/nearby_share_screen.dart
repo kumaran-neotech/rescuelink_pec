@@ -1,92 +1,161 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+
+import '../models/rescue_ticket.dart';
+import '../services/bluetooth_service.dart';
+import '../services/nearby_service.dart';
 
 class NearbyShareScreen extends StatefulWidget {
   const NearbyShareScreen({super.key});
 
   @override
-  State<NearbyShareScreen> createState() =>
-      _NearbyShareScreenState();
+  State<NearbyShareScreen> createState() => _NearbyShareScreenState();
 }
 
-class _NearbyShareScreenState
-    extends State<NearbyShareScreen> {
-
+class _NearbyShareScreenState extends State<NearbyShareScreen> {
   bool scanning = false;
 
-  final List<Map<String, dynamic>> devices = [
-    {
-      "name": "Rescue Node 01",
-      "distance": "12 m",
-      "connected": true,
-    },
-    {
-      "name": "Rescue Node 02",
-      "distance": "28 m",
-      "connected": true,
-    },
-    {
-      "name": "Volunteer Device",
-      "distance": "45 m",
-      "connected": false,
-    },
-  ];
+  // endpointId -> device info, populated live from BluetoothService streams
+  final Map<String, NearbyDevice> _devices = {};
+  final Set<String> _connectedIds = {};
 
-  void startScanning() async {
-    setState(() {
-      scanning = true;
+  StreamSubscription<NearbyDevice>? _foundSub;
+  StreamSubscription<String>? _lostSub;
+  StreamSubscription<Map<String, dynamic>>? _connectionSub;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _foundSub = BluetoothService.deviceFound.listen((device) {
+      setState(() {
+        _devices[device.endpointId] = device;
+      });
     });
 
-    await Future.delayed(
-      const Duration(seconds: 2),
-    );
-
-    setState(() {
-      scanning = false;
+    _lostSub = BluetoothService.deviceLost.listen((endpointId) {
+      setState(() {
+        _devices.remove(endpointId);
+        _connectedIds.remove(endpointId);
+      });
     });
+
+    _connectionSub = BluetoothService.connectionEvents.listen((event) {
+      final String? endpointId = event['endpointId'] as String?;
+      if (endpointId == null) return;
+
+      if (event['type'] == 'connected') {
+        setState(() => _connectedIds.add(endpointId));
+      } else if (event['type'] == 'disconnected' ||
+          event['type'] == 'connectionFailed') {
+        setState(() => _connectedIds.remove(endpointId));
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _foundSub?.cancel();
+    _lostSub?.cancel();
+    _connectionSub?.cancel();
+    BluetoothService.stopMeshMode();
+    super.dispose();
+  }
+
+  // ==========================================================
+  // SCAN / ADVERTISE
+  // ==========================================================
+  Future<void> startScanning() async {
+    setState(() => scanning = true);
+
+    final bool started = await BluetoothService.startMeshMode();
+
+    setState(() => scanning = false);
+
+    if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Text(
-          "Nearby rescue devices updated",
+          started
+              ? "Scanning for nearby rescue devices"
+              : "Couldn't start nearby share — check Bluetooth & location permissions",
         ),
+        backgroundColor: started ? null : Colors.red,
       ),
     );
   }
 
-  void shareRequest(
-    Map<String, dynamic> device,
-  ) {
+  // ==========================================================
+  // SHARE SOS TICKET WITH A SPECIFIC DEVICE
+  // ==========================================================
+  Future<void> shareRequest(NearbyDevice device) async {
+    // Connect first if we're not already connected to this endpoint.
+    if (!_connectedIds.contains(device.endpointId)) {
+      await BluetoothService.connectToDevice(device.endpointId);
+
+      // Give the handshake a moment to complete.
+      await Future.delayed(const Duration(seconds: 2));
+
+      if (!_connectedIds.contains(device.endpointId)) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Couldn't connect to ${device.deviceName}"),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+    }
+
+    // TODO: replace with the real active SOS ticket (e.g. from AppData)
+    // instead of building a placeholder one here.
+    final ticket = RescueTicket(
+      ticketId: 'RL-${DateTime.now().millisecondsSinceEpoch}',
+      type: 'Other',
+      location: 'Unknown',
+      priority: 'High',
+      victims: 1,
+      message: 'SOS - Emergency assistance needed',
+      createdAt: DateTime.now(),
+    );
+
+    final bool sent = await BluetoothService.sendTicket(ticket);
+
+    if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          "SOS request shared with ${device["name"]}",
+          sent
+              ? "SOS request shared with ${device.deviceName}"
+              : "Failed to share SOS request",
         ),
-        backgroundColor: Colors.green,
+        backgroundColor: sent ? Colors.green : Colors.red,
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final deviceList = _devices.values.toList();
+
     return Scaffold(
       backgroundColor: const Color(0xFF0B0F14),
-
       appBar: AppBar(
         backgroundColor: const Color(0xFF0B0F14),
         elevation: 0,
         title: const Text(
           "Nearby Share",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
-
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-
             const SizedBox(height: 15),
 
             // NETWORK ICON
@@ -95,11 +164,9 @@ class _NearbyShareScreenState
               height: 145,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFFFF6B00)
-                    .withOpacity(0.10),
+                color: const Color(0xFFFF6B00).withOpacity(0.10),
                 border: Border.all(
-                  color: const Color(0xFFFF6B00)
-                      .withOpacity(0.35),
+                  color: const Color(0xFFFF6B00).withOpacity(0.35),
                   width: 2,
                 ),
               ),
@@ -114,10 +181,7 @@ class _NearbyShareScreenState
 
             const Text(
               "Nearby Rescue Network",
-              style: TextStyle(
-                fontSize: 23,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 23, fontWeight: FontWeight.bold),
             ),
 
             const SizedBox(height: 8),
@@ -139,37 +203,26 @@ class _NearbyShareScreenState
               width: double.infinity,
               height: 52,
               child: ElevatedButton.icon(
-                onPressed: scanning
-                    ? null
-                    : startScanning,
+                onPressed: scanning ? null : startScanning,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      const Color(0xFFFF6B00),
-                  disabledBackgroundColor:
-                      Colors.white12,
+                  backgroundColor: const Color(0xFFFF6B00),
+                  disabledBackgroundColor: Colors.white12,
                   shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(15),
+                    borderRadius: BorderRadius.circular(15),
                   ),
                 ),
                 icon: scanning
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child:
-                            CircularProgressIndicator(
+                        child: CircularProgressIndicator(
                           strokeWidth: 2,
                           color: Colors.white,
                         ),
                       )
-                    : const Icon(
-                        Icons.radar_rounded,
-                        color: Colors.white,
-                      ),
+                    : const Icon(Icons.radar_rounded, color: Colors.white),
                 label: Text(
-                  scanning
-                      ? "SCANNING..."
-                      : "SCAN NEARBY DEVICES",
+                  scanning ? "SCANNING..." : "SCAN NEARBY DEVICES",
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -184,27 +237,30 @@ class _NearbyShareScreenState
               children: [
                 const Text(
                   "Nearby Devices",
-                  style: TextStyle(
-                    fontSize: 19,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
                 ),
                 const Spacer(),
                 Text(
-                  "${devices.length} found",
-                  style: const TextStyle(
-                    color: Colors.white38,
-                    fontSize: 12,
-                  ),
+                  "${deviceList.length} found",
+                  style: const TextStyle(color: Colors.white38, fontSize: 12),
                 ),
               ],
             ),
 
             const SizedBox(height: 15),
 
-            ...devices.map(
-              (device) => _deviceCard(device),
-            ),
+            if (deviceList.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: Text(
+                  scanning
+                      ? "Searching for nearby devices..."
+                      : "No devices found yet. Tap scan to search.",
+                  style: const TextStyle(color: Colors.white38, fontSize: 13),
+                ),
+              )
+            else
+              ...deviceList.map((device) => _deviceCard(device)),
 
             const SizedBox(height: 20),
 
@@ -213,24 +269,14 @@ class _NearbyShareScreenState
               padding: const EdgeInsets.all(17),
               decoration: BoxDecoration(
                 color: const Color(0xFF151B23),
-                borderRadius:
-                    BorderRadius.circular(17),
-                border: Border.all(
-                  color: const Color(0xFF252D38),
-                ),
+                borderRadius: BorderRadius.circular(17),
+                border: Border.all(color: const Color(0xFF252D38)),
               ),
               child: const Row(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-
-                  Icon(
-                    Icons.info_outline_rounded,
-                    color: Color(0xFFFF6B00),
-                  ),
-
+                  Icon(Icons.info_outline_rounded, color: Color(0xFFFF6B00)),
                   SizedBox(width: 12),
-
                   Expanded(
                     child: Text(
                       "Nearby Share is designed for emergency communication between nearby rescue devices.",
@@ -250,11 +296,8 @@ class _NearbyShareScreenState
     );
   }
 
-  Widget _deviceCard(
-    Map<String, dynamic> device,
-  ) {
-    final bool connected =
-        device["connected"] as bool;
+  Widget _deviceCard(NearbyDevice device) {
+    final bool connected = _connectedIds.contains(device.endpointId);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -270,55 +313,42 @@ class _NearbyShareScreenState
       ),
       child: Row(
         children: [
-
           Container(
             width: 48,
             height: 48,
             decoration: BoxDecoration(
               color: connected
                   ? Colors.green.withOpacity(0.12)
-                  : const Color(0xFFFF6B00)
-                      .withOpacity(0.12),
-              borderRadius:
-                  BorderRadius.circular(14),
+                  : const Color(0xFFFF6B00).withOpacity(0.12),
+              borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(
-              connected
-                  ? Icons.devices_rounded
-                  : Icons.phone_android_rounded,
-              color: connected
-                  ? Colors.green
-                  : const Color(0xFFFF6B00),
+              connected ? Icons.devices_rounded : Icons.phone_android_rounded,
+              color: connected ? Colors.green : const Color(0xFFFF6B00),
             ),
           ),
-
           const SizedBox(width: 13),
-
           Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-
                 Text(
-                  device["name"],
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  device.deviceName,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-
                 const SizedBox(height: 4),
-
                 Row(
                   children: [
                     Icon(
-                      Icons.location_on_outlined,
+                      connected
+                          ? Icons.check_circle_outline
+                          : Icons.wifi_tethering,
                       size: 13,
                       color: Colors.white38,
                     ),
                     const SizedBox(width: 3),
                     Text(
-                      device["distance"],
+                      connected ? "Connected" : "Discovered",
                       style: const TextStyle(
                         color: Colors.white38,
                         fontSize: 11,
@@ -329,22 +359,16 @@ class _NearbyShareScreenState
               ],
             ),
           ),
-
           ElevatedButton(
-            onPressed: () {
-              shareRequest(device);
-            },
+            onPressed: () => shareRequest(device),
             style: ElevatedButton.styleFrom(
-              backgroundColor:
-                  const Color(0xFFFF6B00),
-              padding:
-                  const EdgeInsets.symmetric(
+              backgroundColor: const Color(0xFFFF6B00),
+              padding: const EdgeInsets.symmetric(
                 horizontal: 12,
                 vertical: 9,
               ),
               shape: RoundedRectangleBorder(
-                borderRadius:
-                    BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(10),
               ),
             ),
             child: const Text(

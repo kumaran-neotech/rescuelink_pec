@@ -1,650 +1,211 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart';
 import 'package:nearby_connections/nearby_connections.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-import '../models/rescue_ticket.dart';
-
+// ==========================================================
+// SIMPLE DEVICE MODEL EXPOSED TO THE REST OF THE APP
+// ==========================================================
 class NearbyDevice {
   final String endpointId;
-  final String endpointName;
+  final String deviceName;
 
   NearbyDevice({
     required this.endpointId,
-    required this.endpointName,
+    required this.deviceName,
   });
 }
 
 class NearbyService {
-  static const String serviceId = 'com.rescuelink.app';
-  static const String deviceName = 'RescueLink';
+  // Must be unique to your app and identical on every device
+  // that should be able to discover each other.
+  static const String _serviceId = 'com.rescuelink.mesh';
 
-  final Set<String> _connectedEndpoints = <String>{};
+  final Nearby _nearby = Nearby();
 
-  final Set<String> _processedTickets = <String>{};
+  // endpointId -> deviceName, only for endpoints that are CONNECTED
+  final Map<String, String> _connectedEndpoints = {};
 
-  final StreamController<NearbyDevice>
-      _deviceFoundController =
+  final StreamController<NearbyDevice> _deviceFoundController =
       StreamController<NearbyDevice>.broadcast();
 
-  final StreamController<String>
-      _deviceLostController =
+  final StreamController<String> _deviceLostController =
       StreamController<String>.broadcast();
 
-  final StreamController<Map<String, dynamic>>
-      _connectionController =
+  final StreamController<Map<String, dynamic>> _connectionEventsController =
       StreamController<Map<String, dynamic>>.broadcast();
 
-  Stream<NearbyDevice> get deviceFound =>
-      _deviceFoundController.stream;
+  Stream<NearbyDevice> get deviceFound => _deviceFoundController.stream;
+  Stream<String> get deviceLost => _deviceLostController.stream;
+  Stream<Map<String, dynamic>> get connectionEvents =>
+      _connectionEventsController.stream;
 
-  Stream<String> get deviceLost =>
-      _deviceLostController.stream;
-
-  Stream<Map<String, dynamic>>
-      get connectionEvents =>
-          _connectionController.stream;
+  int get connectedDeviceCount => _connectedEndpoints.length;
 
   // ==========================================================
   // PERMISSIONS
   // ==========================================================
-
   Future<bool> requestNearbyPermissions() async {
-    try {
-      final List<Permission> permissions = [
-        Permission.bluetoothScan,
-        Permission.bluetoothConnect,
-        Permission.bluetoothAdvertise,
-        Permission.location,
-      ];
+    final statuses = await [
+      Permission.bluetoothAdvertise,
+      Permission.bluetoothConnect,
+      Permission.bluetoothScan,
+      Permission.nearbyWifiDevices,
+      Permission.location,
+    ].request();
 
-      final Map<Permission, PermissionStatus> statuses =
-          await permissions.request();
+    // DEBUG: print each permission's status individually so we can see
+    // exactly which one is blocking startup. Remove once everything works.
+    statuses.forEach((permission, status) {
+      print('[NearbyService] $permission -> $status');
+    });
 
-      debugPrint(
-        'Permission statuses: $statuses',
-      );
+    final bool allGranted =
+        statuses.values.every((status) => status.isGranted);
 
-      final bool scan =
-          statuses[Permission.bluetoothScan]
-                  ?.isGranted ??
-              false;
-
-      final bool connect =
-          statuses[Permission.bluetoothConnect]
-                  ?.isGranted ??
-              false;
-
-      final bool advertise =
-          statuses[Permission.bluetoothAdvertise]
-                  ?.isGranted ??
-              false;
-
-      final bool location =
-          statuses[Permission.location]
-                  ?.isGranted ??
-              false;
-
-      final bool result =
-          scan &&
-          connect &&
-          advertise &&
-          location;
-
-      debugPrint(
-        'Nearby permissions granted: $result',
-      );
-
-      return result;
-    } catch (e) {
-      debugPrint(
-        'Permission error: $e',
-      );
-
-      return false;
+    if (!allGranted) {
+      print('[NearbyService] Permission check FAILED overall.');
     }
-  }
 
-  Future<bool> checkBluetoothPermission() async {
-    try {
-      final PermissionStatus scan =
-          await Permission.bluetoothScan.status;
-
-      final PermissionStatus connect =
-          await Permission.bluetoothConnect.status;
-
-      final PermissionStatus advertise =
-          await Permission.bluetoothAdvertise.status;
-
-      return scan.isGranted &&
-          connect.isGranted &&
-          advertise.isGranted;
-    } catch (e) {
-      debugPrint(
-        'Bluetooth permission error: $e',
-      );
-
-      return false;
-    }
+    return allGranted;
   }
 
   // ==========================================================
-  // START ADVERTISING
+  // ADVERTISING  (makes this device discoverable)
   // ==========================================================
-
   Future<bool> startAdvertising() async {
     try {
-      final bool permissionGranted =
-          await checkBluetoothPermission();
+      final String userName =
+          'RescueLink-${DateTime.now().millisecondsSinceEpoch % 10000}';
 
-      if (!permissionGranted) {
-        debugPrint(
-          'Bluetooth permission not granted.',
-        );
-
-        return false;
-      }
-
-      await Nearby().startAdvertising(
-        deviceName,
+      return await _nearby.startAdvertising(
+        userName,
         Strategy.P2P_CLUSTER,
-        serviceId: serviceId,
-
-        onConnectionInitiated: (
-          String endpointId,
-          ConnectionInfo connectionInfo,
-        ) {
-          debugPrint(
-            'Incoming connection: $endpointId',
-          );
-
-          Nearby().acceptConnection(
-            endpointId,
-            onPayLoadRecieved: (
-              String endpointId,
-              Payload payload,
-            ) async {
-              await _handlePayload(
-                endpointId,
-                payload,
-              );
-            },
-          );
-        },
-
-        onConnectionResult: (
-          String endpointId,
-          Status status,
-        ) {
-          debugPrint(
-            'Connection result: '
-            '$endpointId -> $status',
-          );
-
-          if (status == Status.CONNECTED) {
-            _connectedEndpoints.add(
-              endpointId,
-            );
-          } else {
-            _connectedEndpoints.remove(
-              endpointId,
-            );
-          }
-
-          _connectionController.add({
-            'endpointId': endpointId,
-            'statusCode': status,
-          });
-        },
-
-        onDisconnected: (
-          String endpointId,
-        ) {
-          debugPrint(
-            'Disconnected: $endpointId',
-          );
-
-          _connectedEndpoints.remove(
-            endpointId,
-          );
-
-          _deviceLostController.add(
-            endpointId,
-          );
-        },
+        serviceId: _serviceId,
+        onConnectionInitiated: _onConnectionInitiated,
+        onConnectionResult: _onConnectionResult,
+        onDisconnected: _onDisconnected,
       );
-
-      debugPrint(
-        'Advertising started.',
-      );
-
-      return true;
     } catch (e) {
-      debugPrint(
-        'Advertising error: $e',
-      );
-
+      print('startAdvertising error: $e');
       return false;
     }
   }
 
-  // ==========================================================
-  // STOP ADVERTISING
-  // ==========================================================
-
   Future<void> stopAdvertising() async {
-    try {
-      await Nearby().stopAdvertising();
-
-      debugPrint(
-        'Advertising stopped.',
-      );
-    } catch (e) {
-      debugPrint(
-        'Stop advertising error: $e',
-      );
-    }
+    await _nearby.stopAdvertising();
   }
 
   // ==========================================================
-  // START DISCOVERY
+  // DISCOVERY  (finds other advertising devices)
   // ==========================================================
-
   Future<bool> startDiscovery() async {
     try {
-      final bool permissionGranted =
-          await checkBluetoothPermission();
-
-      if (!permissionGranted) {
-        debugPrint(
-          'Bluetooth permission not granted.',
-        );
-
-        return false;
-      }
-
-      await Nearby().startDiscovery(
-        deviceName,
+      return await _nearby.startDiscovery(
+        'RescueLink-Scanner',
         Strategy.P2P_CLUSTER,
-        serviceId: serviceId,
-
-        onEndpointFound: (
-          String endpointId,
-          String endpointName,
-          String foundServiceId,
-        ) {
-          debugPrint(
-            'Nearby device found: '
-            '$endpointName ($endpointId)',
-          );
-
+        serviceId: _serviceId,
+        onEndpointFound: (endpointId, endpointName, serviceId) {
           _deviceFoundController.add(
             NearbyDevice(
               endpointId: endpointId,
-              endpointName: endpointName,
+              deviceName: endpointName,
             ),
           );
         },
-
-        onEndpointLost: (
-          String? endpointId,
-        ) {
+        onEndpointLost: (endpointId) {
           if (endpointId != null) {
-            debugPrint(
-              'Nearby device lost: $endpointId',
-            );
-
-            _deviceLostController.add(
-              endpointId,
-            );
+            _deviceLostController.add(endpointId);
           }
         },
       );
-
-      debugPrint(
-        'Discovery started.',
-      );
-
-      return true;
     } catch (e) {
-      debugPrint(
-        'Discovery error: $e',
-      );
-
+      print('startDiscovery error: $e');
       return false;
     }
   }
 
-  // ==========================================================
-  // STOP DISCOVERY
-  // ==========================================================
-
   Future<void> stopDiscovery() async {
-    try {
-      await Nearby().stopDiscovery();
-
-      debugPrint(
-        'Discovery stopped.',
-      );
-    } catch (e) {
-      debugPrint(
-        'Stop discovery error: $e',
-      );
-    }
+    await _nearby.stopDiscovery();
   }
 
   // ==========================================================
-  // REQUEST CONNECTION
+  // CONNECTION HANDSHAKE
   // ==========================================================
+  Future<void> requestConnection(String endpointId) async {
+    await _nearby.requestConnection(
+      'RescueLink-User',
+      endpointId,
+      onConnectionInitiated: _onConnectionInitiated,
+      onConnectionResult: _onConnectionResult,
+      onDisconnected: _onDisconnected,
+    );
+  }
 
-  Future<void> requestConnection(
-    String endpointId,
-  ) async {
-    try {
-      await Nearby().requestConnection(
-        deviceName,
-        endpointId,
-
-        onConnectionInitiated: (
-          String endpointId,
-          ConnectionInfo connectionInfo,
-        ) {
-          debugPrint(
-            'Connection initiated: $endpointId',
-          );
-
-          Nearby().acceptConnection(
-            endpointId,
-            onPayLoadRecieved: (
-              String endpointId,
-              Payload payload,
-            ) async {
-              await _handlePayload(
-                endpointId,
-                payload,
-              );
-            },
-          );
-        },
-
-        onConnectionResult: (
-          String endpointId,
-          Status status,
-        ) {
-          debugPrint(
-            'Connection result: '
-            '$endpointId -> $status',
-          );
-
-          if (status == Status.CONNECTED) {
-            _connectedEndpoints.add(
-              endpointId,
-            );
-          } else {
-            _connectedEndpoints.remove(
-              endpointId,
-            );
-          }
-
-          _connectionController.add({
-            'endpointId': endpointId,
-            'statusCode': status,
+  void _onConnectionInitiated(String endpointId, ConnectionInfo info) async {
+    // Auto-accept: fine for an emergency mesh where every node is trusted.
+    await _nearby.acceptConnection(
+      endpointId,
+      onPayLoadRecieved: (fromEndpointId, payload) {
+        if (payload.type == PayloadType.BYTES && payload.bytes != null) {
+          final String message = String.fromCharCodes(payload.bytes!);
+          _connectionEventsController.add({
+            'type': 'payloadReceived',
+            'endpointId': fromEndpointId,
+            'message': message,
           });
-        },
-
-        onDisconnected: (
-          String endpointId,
-        ) {
-          debugPrint(
-            'Disconnected: $endpointId',
-          );
-
-          _connectedEndpoints.remove(
-            endpointId,
-          );
-
-          _deviceLostController.add(
-            endpointId,
-          );
-        },
-      );
-    } catch (e) {
-      debugPrint(
-        'Request connection error: $e',
-      );
-    }
-  }
-
-  // ==========================================================
-  // BROADCAST PAYLOAD
-  // ==========================================================
-
-  Future<void> broadcastPayload(
-    List<int> bytes, {
-    String? excludeEndpointId,
-  }) async {
-    if (_connectedEndpoints.isEmpty) {
-      debugPrint(
-        'No connected devices.',
-      );
-
-      return;
-    }
-
-    final Uint8List payload =
-        Uint8List.fromList(bytes);
-
-    final List<String> endpoints =
-        List<String>.from(
-      _connectedEndpoints,
-    );
-
-    for (final String endpointId in endpoints) {
-      if (excludeEndpointId != null &&
-          endpointId == excludeEndpointId) {
-        continue;
-      }
-
-      try {
-        await Nearby().sendBytesPayload(
-          endpointId,
-          payload,
-        );
-
-        debugPrint(
-          'Payload sent to $endpointId',
-        );
-      } catch (e) {
-        debugPrint(
-          'Payload send error: $e',
-        );
-      }
-    }
-  }
-
-  // ==========================================================
-  // RECEIVE PAYLOAD
-  // ==========================================================
-
-  Future<void> _handlePayload(
-    String endpointId,
-    Payload payload,
-  ) async {
-    try {
-      if (payload.type != PayloadType.BYTES) {
-        debugPrint(
-          'Unsupported payload type.',
-        );
-
-        return;
-      }
-
-      if (payload.bytes == null ||
-          payload.bytes!.isEmpty) {
-        debugPrint(
-          'Empty payload received.',
-        );
-
-        return;
-      }
-
-      final String jsonString =
-          utf8.decode(
-        payload.bytes!,
-        allowMalformed: false,
-      );
-
-      debugPrint(
-        'Received payload: $jsonString',
-      );
-
-      final dynamic decoded =
-          jsonDecode(jsonString);
-
-      if (decoded is! Map) {
-        debugPrint(
-          'Invalid ticket format.',
-        );
-
-        return;
-      }
-
-      final Map<String, dynamic> jsonData =
-          Map<String, dynamic>.from(
-        decoded,
-      );
-
-      final RescueTicket ticket =
-          RescueTicket.fromMap(
-        jsonData,
-      );
-
-      final String ticketId =
-          ticket.ticketId;
-
-      if (ticketId.isEmpty) {
-        debugPrint(
-          'Ticket ID is empty.',
-        );
-
-        return;
-      }
-
-      // Prevent infinite A -> B -> C -> A forwarding.
-      if (_processedTickets.contains(ticketId)) {
-        debugPrint(
-          'Duplicate ticket ignored: $ticketId',
-        );
-
-        return;
-      }
-
-      // Mark before forwarding.
-      _processedTickets.add(ticketId);
-
-      debugPrint(
-        'Ticket received successfully.',
-      );
-
-      debugPrint(
-        'Ticket ID: ${ticket.ticketId}',
-      );
-
-      debugPrint(
-        'Priority: ${ticket.priority}',
-      );
-
-      debugPrint(
-        'Victims: ${ticket.victims}',
-      );
-
-      debugPrint(
-        'Location: ${ticket.location}',
-      );
-
-      // Forward ticket to other connected devices.
-      await broadcastPayload(
-        utf8.encode(jsonString),
-        excludeEndpointId: endpointId,
-      );
-
-      debugPrint(
-        'Ticket forwarded successfully.',
-      );
-    } catch (e) {
-      debugPrint(
-        'Payload processing error: $e',
-      );
-    }
-  }
-
-  // ==========================================================
-  // SEND TICKET
-  // ==========================================================
-
-  Future<void> sendTicket(
-    RescueTicket ticket,
-  ) async {
-    try {
-      final String jsonString =
-          jsonEncode(
-        ticket.toMap(),
-      );
-
-      final List<int> bytes =
-          utf8.encode(jsonString);
-
-      _processedTickets.add(
-        ticket.ticketId,
-      );
-
-      await broadcastPayload(bytes);
-
-      debugPrint(
-        'Rescue ticket sent successfully.',
-      );
-    } catch (e) {
-      debugPrint(
-        'Send ticket error: $e',
-      );
-    }
-  }
-
-  // ==========================================================
-  // GETTERS
-  // ==========================================================
-
-  int get connectedDeviceCount {
-    return _connectedEndpoints.length;
-  }
-
-  Set<String> get connectedEndpoints {
-    return Set.unmodifiable(
-      _connectedEndpoints,
+        }
+      },
     );
   }
 
-  // ==========================================================
-  // CLEAR TICKETS
-  // ==========================================================
+  void _onConnectionResult(String endpointId, Status status) {
+    if (status == Status.CONNECTED) {
+      _connectedEndpoints[endpointId] = endpointId;
+      _connectionEventsController.add({
+        'type': 'connected',
+        'endpointId': endpointId,
+      });
+    } else {
+      _connectionEventsController.add({
+        'type': 'connectionFailed',
+        'endpointId': endpointId,
+      });
+    }
+  }
 
-  void clearProcessedTickets() {
-    _processedTickets.clear();
+  void _onDisconnected(String endpointId) {
+    _connectedEndpoints.remove(endpointId);
+    _connectionEventsController.add({
+      'type': 'disconnected',
+      'endpointId': endpointId,
+    });
   }
 
   // ==========================================================
-  // DISPOSE
+  // SEND DATA
+  //
+  // NOTE: this broadcasts to every currently-connected endpoint.
+  // Nearby Connections has no built-in "send to just one endpoint
+  // I'm not yet connected to" — you must requestConnection() and
+  // wait for onConnectionResult(CONNECTED) before broadcastPayload
+  // will actually reach that device.
   // ==========================================================
+  Future<void> broadcastPayload(List<int> bytes) async {
+    final Uint8List data = Uint8List.fromList(bytes);
 
+    for (final endpointId in _connectedEndpoints.keys) {
+      await _nearby.sendBytesPayload(endpointId, data);
+    }
+  }
+
+  // ==========================================================
+  // CLEANUP
+  // ==========================================================
   void dispose() {
     _deviceFoundController.close();
     _deviceLostController.close();
-    _connectionController.close();
-
-    _connectedEndpoints.clear();
-    _processedTickets.clear();
+    _connectionEventsController.close();
   }
 }
