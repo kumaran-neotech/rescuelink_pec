@@ -5,19 +5,16 @@ class VolunteerScreen extends StatefulWidget {
   const VolunteerScreen({super.key});
 
   @override
-  State<VolunteerScreen> createState() =>
-      _VolunteerScreenState();
+  State<VolunteerScreen> createState() => _VolunteerScreenState();
 }
 
-class _VolunteerScreenState
-    extends State<VolunteerScreen> {
+class _VolunteerScreenState extends State<VolunteerScreen> {
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
-  final _formKey = GlobalKey<FormState>();
-
-  final nameController = TextEditingController();
-  final emailController = TextEditingController();
-  final phoneController = TextEditingController();
-  final passwordController = TextEditingController();
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
 
   bool passwordVisible = false;
   bool loggedIn = false;
@@ -40,31 +37,40 @@ class _VolunteerScreenState
       return;
     }
 
-    final email =
-        emailController.text.trim().toLowerCase();
+    final String name = nameController.text.trim();
+    final String email = emailController.text.trim().toLowerCase();
+    final String phone = phoneController.text.trim();
 
-    if (!AppData.instance.isVolunteerEmail(email)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            "Only @rescuelink.com volunteer accounts are allowed.",
-          ),
-          backgroundColor: Colors.redAccent,
-        ),
+    // Any valid @rescuelink.com email is accepted.
+    if (!_isValidRescueLinkEmail(email)) {
+      _showError(
+        "Please use a valid @rescuelink.com volunteer email.",
       );
-
       return;
     }
 
+    // Store the currently logged-in volunteer.
     AppData.instance.setVolunteer(
-      name: nameController.text.trim(),
+      name: name,
       email: email,
-      phone: phoneController.text.trim(),
+      phone: phone,
     );
 
     setState(() {
       loggedIn = true;
     });
+  }
+
+  // ==========================================================
+  // EMAIL VALIDATION
+  // ==========================================================
+
+  bool _isValidRescueLinkEmail(String email) {
+    final RegExp emailRegex = RegExp(
+      r'^[a-zA-Z0-9._%+-]+@rescuelink\.com$',
+    );
+
+    return emailRegex.hasMatch(email);
   }
 
   // ==========================================================
@@ -86,6 +92,40 @@ class _VolunteerScreenState
     );
   }
 
+  // ==========================================================
+  // LOGOUT
+  // ==========================================================
+
+  void logout() {
+    setState(() {
+      loggedIn = false;
+
+      nameController.clear();
+      emailController.clear();
+      phoneController.clear();
+      passwordController.clear();
+
+      passwordVisible = false;
+    });
+  }
+
+  // ==========================================================
+  // ERROR
+  // ==========================================================
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.redAccent,
+      ),
+    );
+  }
+
+  // ==========================================================
+  // BUILD
+  // ==========================================================
+
   @override
   Widget build(BuildContext context) {
     if (!loggedIn) {
@@ -96,13 +136,12 @@ class _VolunteerScreenState
   }
 
   // ==========================================================
-  // VOLUNTEER LOGIN SCREEN
+  // LOGIN SCREEN
   // ==========================================================
 
   Widget _buildVolunteerLogin() {
     return Scaffold(
       backgroundColor: const Color(0xFF0B0F14),
-
       appBar: AppBar(
         backgroundColor: const Color(0xFF0B0F14),
         elevation: 0,
@@ -113,218 +152,221 @@ class _VolunteerScreenState
           ),
         ),
       ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(22),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                const SizedBox(height: 20),
 
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(22),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-
-              const SizedBox(height: 20),
-
-              // ICON
-              Container(
-                width: 125,
-                height: 125,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: const Color(0xFFFF6B00)
-                      .withOpacity(0.12),
-                  border: Border.all(
-                    color: const Color(0xFFFF6B00)
-                        .withOpacity(0.4),
-                    width: 2,
+                // ICON
+                Container(
+                  width: 125,
+                  height: 125,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFFFF6B00).withOpacity(0.12),
+                    border: Border.all(
+                      color: const Color(0xFFFF6B00).withOpacity(0.4),
+                      width: 2,
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.volunteer_activism_rounded,
+                    size: 65,
+                    color: Color(0xFFFF6B00),
                   ),
                 ),
-                child: const Icon(
-                  Icons.volunteer_activism_rounded,
-                  size: 65,
-                  color: Color(0xFFFF6B00),
+
+                const SizedBox(height: 25),
+
+                const Text(
+                  "Volunteer Portal",
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
 
-              const SizedBox(height: 25),
+                const SizedBox(height: 8),
 
-              const Text(
-                "Volunteer Portal",
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
+                const Text(
+                  "Authorized RescueLink volunteers can access the rescue portal.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white38,
+                    fontSize: 13,
+                  ),
                 ),
-              ),
 
-              const SizedBox(height: 8),
+                const SizedBox(height: 30),
 
-              const Text(
-                "Authorized RescueLink volunteers only",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white38,
-                ),
-              ),
+                // NAME
+                _textField(
+                  controller: nameController,
+                  label: "Volunteer Name",
+                  icon: Icons.person_outline,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return "Enter your name";
+                    }
 
-              const SizedBox(height: 30),
+                    if (value.trim().length < 2) {
+                      return "Enter a valid name";
+                    }
 
-              _textField(
-                controller: nameController,
-                label: "Volunteer Name",
-                icon: Icons.person_outline,
-                validator: (value) {
-                  if (value == null ||
-                      value.trim().isEmpty) {
-                    return "Enter your name";
-                  }
-
-                  return null;
-                },
-              ),
-
-              const SizedBox(height: 15),
-
-              _textField(
-                controller: emailController,
-                label: "RescueLink Email",
-                hint: "name@rescuelink.com",
-                icon: Icons.email_outlined,
-                keyboardType:
-                    TextInputType.emailAddress,
-                validator: (value) {
-                  if (value == null ||
-                      value.trim().isEmpty) {
-                    return "Enter your email";
-                  }
-
-                  if (!AppData.instance
-                      .isVolunteerEmail(value)) {
-                    return "Use your @rescuelink.com email";
-                  }
-
-                  return null;
-                },
-              ),
-
-              const SizedBox(height: 15),
-
-              _textField(
-                controller: phoneController,
-                label: "Phone Number",
-                icon: Icons.phone_outlined,
-                keyboardType: TextInputType.phone,
-                maxLength: 10,
-                validator: (value) {
-                  if (value == null ||
-                      value.trim().length != 10) {
-                    return "Enter a valid 10-digit number";
-                  }
-
-                  if (!RegExp(r'^[0-9]+$')
-                      .hasMatch(value.trim())) {
-                    return "Enter numbers only";
-                  }
-
-                  return null;
-                },
-              ),
-
-              const SizedBox(height: 15),
-
-              _textField(
-                controller: passwordController,
-                label: "Password",
-                icon: Icons.lock_outline,
-                obscureText: !passwordVisible,
-                suffixIcon: IconButton(
-                  onPressed: () {
-                    setState(() {
-                      passwordVisible =
-                          !passwordVisible;
-                    });
+                    return null;
                   },
-                  icon: Icon(
-                    passwordVisible
-                        ? Icons.visibility_off
-                        : Icons.visibility,
-                    color: Colors.white54,
-                  ),
                 ),
-                validator: (value) {
-                  if (value == null ||
-                      value.length < 6) {
-                    return "Password must contain at least 6 characters";
-                  }
 
-                  return null;
-                },
-              ),
+                const SizedBox(height: 15),
 
-              const SizedBox(height: 30),
+                // EMAIL
+                _textField(
+                  controller: emailController,
+                  label: "RescueLink Email",
+                  hint: "name@rescuelink.com",
+                  icon: Icons.email_outlined,
+                  keyboardType: TextInputType.emailAddress,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return "Enter your email";
+                    }
 
-              SizedBox(
-                width: double.infinity,
-                height: 58,
-                child: ElevatedButton.icon(
-                  onPressed: volunteerLogin,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        const Color(0xFFFF6B00),
-                    shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(16),
+                    final email = value.trim().toLowerCase();
+
+                    if (!_isValidRescueLinkEmail(email)) {
+                      return "Use a valid @rescuelink.com email";
+                    }
+
+                    return null;
+                  },
+                ),
+
+                const SizedBox(height: 15),
+
+                // PHONE
+                _textField(
+                  controller: phoneController,
+                  label: "Phone Number",
+                  icon: Icons.phone_outlined,
+                  keyboardType: TextInputType.phone,
+                  maxLength: 10,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return "Enter your phone number";
+                    }
+
+                    final phone = value.trim();
+
+                    if (!RegExp(r'^[0-9]{10}$').hasMatch(phone)) {
+                      return "Enter a valid 10-digit number";
+                    }
+
+                    return null;
+                  },
+                ),
+
+                const SizedBox(height: 15),
+
+                // PASSWORD
+                _textField(
+                  controller: passwordController,
+                  label: "Password",
+                  icon: Icons.lock_outline,
+                  obscureText: !passwordVisible,
+                  suffixIcon: IconButton(
+                    onPressed: () {
+                      setState(() {
+                        passwordVisible = !passwordVisible;
+                      });
+                    },
+                    icon: Icon(
+                      passwordVisible
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                      color: Colors.white54,
                     ),
                   ),
-                  icon: const Icon(
-                    Icons.login_rounded,
-                    color: Colors.white,
-                  ),
-                  label: const Text(
-                    "ENTER VOLUNTEER PORTAL",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return "Enter your password";
+                    }
+
+                    if (value.length < 6) {
+                      return "Password must contain at least 6 characters";
+                    }
+
+                    return null;
+                  },
                 ),
-              ),
 
-              const SizedBox(height: 25),
+                const SizedBox(height: 30),
 
-              Container(
-                padding: const EdgeInsets.all(15),
-                decoration: BoxDecoration(
-                  color: Colors.orange
-                      .withOpacity(0.08),
-                  borderRadius:
-                      BorderRadius.circular(15),
-                  border: Border.all(
-                    color: Colors.orange
-                        .withOpacity(0.2),
-                  ),
-                ),
-                child: const Row(
-                  children: [
-
-                    Icon(
-                      Icons.verified_user_outlined,
-                      color: Color(0xFFFF6B00),
-                    ),
-
-                    SizedBox(width: 12),
-
-                    Expanded(
-                      child: Text(
-                        "Access is restricted to official RescueLink volunteer email accounts.",
-                        style: TextStyle(
-                          color: Colors.white54,
-                          fontSize: 12,
-                          height: 1.4,
-                        ),
+                // LOGIN BUTTON
+                SizedBox(
+                  width: double.infinity,
+                  height: 58,
+                  child: ElevatedButton.icon(
+                    onPressed: volunteerLogin,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFF6B00),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
                       ),
                     ),
-                  ],
+                    icon: const Icon(
+                      Icons.login_rounded,
+                    ),
+                    label: const Text(
+                      "ENTER VOLUNTEER PORTAL",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ],
+
+                const SizedBox(height: 25),
+
+                // INFORMATION
+                Container(
+                  padding: const EdgeInsets.all(15),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(
+                      color: Colors.orange.withOpacity(0.2),
+                    ),
+                  ),
+                  child: const Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.verified_user_outlined,
+                        color: Color(0xFFFF6B00),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          "Any volunteer using a valid @rescuelink.com email can access the portal. The email is not restricted to a fixed list of volunteers.",
+                          style: TextStyle(
+                            color: Colors.white54,
+                            fontSize: 12,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
         ),
       ),
@@ -336,15 +378,13 @@ class _VolunteerScreenState
   // ==========================================================
 
   Widget _buildVolunteerDashboard() {
-    final volunteer =
-        AppData.instance.volunteer;
-
-    final requests =
-        AppData.instance.requests;
+    final volunteer = AppData.instance.volunteer;
+    final requests = AppData.instance.requests;
 
     final pendingRequests = requests
-        .where((request) =>
-            request.status == "Pending")
+        .where(
+          (request) => request.status == "Pending",
+        )
         .toList();
 
     return Scaffold(
@@ -359,37 +399,41 @@ class _VolunteerScreenState
             fontWeight: FontWeight.bold,
           ),
         ),
+        actions: [
+          IconButton(
+            onPressed: logout,
+            tooltip: "Logout",
+            icon: const Icon(
+              Icons.logout_rounded,
+              color: Colors.white70,
+            ),
+          ),
+        ],
       ),
 
       body: RefreshIndicator(
         onRefresh: () async {
           setState(() {});
         },
-
         child: SingleChildScrollView(
-          physics:
-              const AlwaysScrollableScrollPhysics(),
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(20),
           child: Column(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
               // VOLUNTEER HEADER
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
                   color: const Color(0xFF151B23),
-                  borderRadius:
-                      BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(20),
                   border: Border.all(
                     color: const Color(0xFF252D38),
                   ),
                 ),
                 child: Row(
                   children: [
-
                     Container(
                       width: 60,
                       height: 60,
@@ -412,13 +456,11 @@ class _VolunteerScreenState
                         crossAxisAlignment:
                             CrossAxisAlignment.start,
                         children: [
-
                           Text(
                             "Welcome, ${volunteer?.name ?? "Volunteer"}",
                             style: const TextStyle(
                               fontSize: 18,
-                              fontWeight:
-                                  FontWeight.bold,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
 
@@ -436,15 +478,12 @@ class _VolunteerScreenState
 
                           Row(
                             children: const [
-
                               Icon(
                                 Icons.verified,
                                 color: Colors.green,
                                 size: 15,
                               ),
-
                               SizedBox(width: 5),
-
                               Text(
                                 "Authorized Volunteer",
                                 style: TextStyle(
@@ -466,7 +505,6 @@ class _VolunteerScreenState
               // STATISTICS
               Row(
                 children: [
-
                   Expanded(
                     child: _statCard(
                       "Pending",
@@ -513,8 +551,7 @@ class _VolunteerScreenState
                 _noRequests()
               else
                 ...requests.map(
-                  (request) =>
-                      _requestCard(request),
+                  (request) => _requestCard(request),
                 ),
             ],
           ),
@@ -527,11 +564,8 @@ class _VolunteerScreenState
   // REQUEST CARD
   // ==========================================================
 
-  Widget _requestCard(
-    RescueRequest request,
-  ) {
-    final accepted =
-        request.status == "Accepted";
+  Widget _requestCard(RescueRequest request) {
+    final bool accepted = request.status == "Accepted";
 
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
@@ -542,28 +576,22 @@ class _VolunteerScreenState
         border: Border.all(
           color: accepted
               ? Colors.green.withOpacity(0.3)
-              : const Color(0xFFFF6B00)
-                  .withOpacity(0.25),
+              : const Color(0xFFFF6B00).withOpacity(0.25),
         ),
       ),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
           Row(
             children: [
-
               Container(
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
                   color: accepted
                       ? Colors.green.withOpacity(0.12)
-                      : const Color(0xFFFF6B00)
-                          .withOpacity(0.12),
-                  borderRadius:
-                      BorderRadius.circular(13),
+                      : const Color(0xFFFF6B00).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(13),
                 ),
                 child: Icon(
                   accepted
@@ -582,12 +610,10 @@ class _VolunteerScreenState
                   crossAxisAlignment:
                       CrossAxisAlignment.start,
                   children: [
-
                     Text(
                       request.type,
                       style: const TextStyle(
-                        fontWeight:
-                            FontWeight.bold,
+                        fontWeight: FontWeight.bold,
                         fontSize: 15,
                       ),
                     ),
@@ -614,15 +640,13 @@ class _VolunteerScreenState
                   color: accepted
                       ? Colors.green.withOpacity(0.12)
                       : Colors.orange.withOpacity(0.12),
-                  borderRadius:
-                      BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   request.status,
                   style: TextStyle(
-                    color: accepted
-                        ? Colors.green
-                        : Colors.orange,
+                    color:
+                        accepted ? Colors.green : Colors.orange,
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                   ),
@@ -662,21 +686,18 @@ class _VolunteerScreenState
                   acceptRequest(request);
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      const Color(0xFFFF6B00),
+                  backgroundColor: const Color(0xFFFF6B00),
+                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(13),
+                    borderRadius: BorderRadius.circular(13),
                   ),
                 ),
                 icon: const Icon(
                   Icons.check_circle_outline,
-                  color: Colors.white,
                 ),
                 label: const Text(
                   "ACCEPT REQUEST",
                   style: TextStyle(
-                    color: Colors.white,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -685,29 +706,23 @@ class _VolunteerScreenState
           else
             Container(
               width: double.infinity,
-              padding:
-                  const EdgeInsets.symmetric(
+              padding: const EdgeInsets.symmetric(
                 vertical: 13,
               ),
               decoration: BoxDecoration(
-                color: Colors.green
-                    .withOpacity(0.08),
-                borderRadius:
-                    BorderRadius.circular(13),
+                color: Colors.green.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(13),
               ),
               child: const Row(
                 mainAxisAlignment:
                     MainAxisAlignment.center,
                 children: [
-
                   Icon(
                     Icons.check_circle,
                     color: Colors.green,
                     size: 18,
                   ),
-
                   SizedBox(width: 8),
-
                   Text(
                     "REQUEST ACCEPTED",
                     style: TextStyle(
@@ -766,22 +781,31 @@ class _VolunteerScreenState
         filled: true,
         fillColor: const Color(0xFF151B23),
         border: OutlineInputBorder(
-          borderRadius:
-              BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius:
-              BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(
             color: Colors.white12,
           ),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius:
-              BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(
             color: Color(0xFFFF6B00),
+          ),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(
+            color: Colors.redAccent,
+          ),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(
+            color: Colors.redAccent,
           ),
         ),
       ),
@@ -805,7 +829,6 @@ class _VolunteerScreenState
       ),
       child: Column(
         children: [
-
           Icon(
             icon,
             color: const Color(0xFFFF6B00),
@@ -846,11 +869,9 @@ class _VolunteerScreenState
     String value,
   ) {
     return Padding(
-      padding:
-          const EdgeInsets.only(bottom: 9),
+      padding: const EdgeInsets.only(bottom: 9),
       child: Row(
         children: [
-
           Icon(
             icon,
             size: 17,
@@ -891,12 +912,10 @@ class _VolunteerScreenState
       padding: const EdgeInsets.all(30),
       decoration: BoxDecoration(
         color: const Color(0xFF151B23),
-        borderRadius:
-            BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(18),
       ),
       child: const Column(
         children: [
-
           Icon(
             Icons.inbox_outlined,
             color: Colors.white30,
