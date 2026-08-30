@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+
 import 'emergency_screen.dart';
 import 'my_request_screen.dart';
 import 'profile_screen.dart';
-import 'speech_screen.dart';
 import 'request_safety_screen.dart';
 import 'setting_screen.dart';
 import 'voluenteer_screen.dart';
@@ -16,6 +16,10 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  // ==========================================================
+  // OPEN NORMAL SCREEN
+  // ==========================================================
+
   void openScreen(BuildContext context, Widget screen) {
     Navigator.push(
       context,
@@ -25,10 +29,19 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ==========================================================
+  // BUILD
+  // ==========================================================
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0B0F14),
+
+      // ======================================================
+      // APP BAR
+      // ======================================================
+
       appBar: AppBar(
         backgroundColor: const Color(0xFF0B0F14),
         elevation: 0,
@@ -41,7 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             SizedBox(width: 10),
             Text(
-              "RescueLink",
+              'RescueLink',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 21,
@@ -51,7 +64,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         actions: [
           IconButton(
-            tooltip: "Profile",
+            tooltip: 'Profile',
             onPressed: () {
               openScreen(
                 context,
@@ -63,7 +76,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           IconButton(
-            tooltip: "Settings",
+            tooltip: 'Settings',
             onPressed: () {
               openScreen(
                 context,
@@ -77,6 +90,11 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(width: 8),
         ],
       ),
+
+      // ======================================================
+      // BODY
+      // ======================================================
+
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(
@@ -89,21 +107,28 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                "Welcome back!",
+                'Welcome back!',
                 style: TextStyle(
                   color: Colors.white54,
                   fontSize: 14,
                 ),
               ),
+
               const SizedBox(height: 5),
+
               const Text(
-                "Stay Safe. Stay Connected.",
+                'Stay Safe. Stay Connected.',
                 style: TextStyle(
                   fontSize: 27,
                   fontWeight: FontWeight.bold,
                 ),
               ),
+
               const SizedBox(height: 18),
+
+              // ==================================================
+              // OFFLINE NETWORK
+              // ==================================================
 
               Container(
                 width: double.infinity,
@@ -129,7 +154,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             CrossAxisAlignment.start,
                         children: [
                           Text(
-                            "Offline Network Active",
+                            'Offline Network Active',
                             style: TextStyle(
                               color: Colors.green,
                               fontWeight: FontWeight.bold,
@@ -137,7 +162,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           SizedBox(height: 3),
                           Text(
-                            "Ready for emergency communication",
+                            'Ready for emergency communication',
                             style: TextStyle(
                               color: Colors.white54,
                               fontSize: 11,
@@ -156,9 +181,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 25),
 
+              // ==================================================
+              // EMERGENCY SOS TITLE
+              // ==================================================
+
               const Center(
                 child: Text(
-                  "EMERGENCY SOS",
+                  'EMERGENCY SOS',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -169,13 +198,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 18),
 
+              // ==================================================
               // TAP & SPEAK
+              // ==================================================
+
               Center(
                 child: GestureDetector(
                   onTap: () {
                     openScreen(
                       context,
-                      const SpeechScreen(),
+                      const EmergencyScreen(),
                     );
                   },
                   child: Container(
@@ -198,7 +230,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: Colors.white.withOpacity(0.30),
+                          color:
+                              Colors.white.withOpacity(0.30),
                           width: 2,
                         ),
                       ),
@@ -213,7 +246,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           SizedBox(height: 3),
                           Text(
-                            "TAP & SPEAK",
+                            'TAP & SPEAK',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 13,
@@ -232,7 +265,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const Center(
                 child: Text(
-                  "Speak your emergency to create an SOS request",
+                  'Speak your emergency to create an SOS request',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white38,
@@ -243,8 +276,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 30),
 
+              // ==================================================
+              // SERVICES
+              // ==================================================
+
               const Text(
-                "RescueLink Services",
+                'RescueLink Services',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -259,8 +296,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: _serviceCard(
                       context,
                       icon: Icons.warning_amber_rounded,
-                      title: "Emergency",
-                      subtitle: "Report SOS",
+                      title: 'Emergency',
+                      subtitle: 'Report SOS',
                       onTap: () {
                         openScreen(
                           context,
@@ -280,8 +317,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: _serviceCard(
                       context,
                       icon: Icons.health_and_safety_rounded,
-                      title: "Request Safety",
-                      subtitle: "Request help",
+                      title: 'Request Safety',
+                      subtitle: 'Request help',
                       onTap: () {
                         openScreen(
                           context,
@@ -295,8 +332,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: _serviceCard(
                       context,
                       icon: Icons.assignment_rounded,
-                      title: "My Requests",
-                      subtitle: "Track SOS",
+                      title: 'My Requests',
+                      subtitle: 'Track SOS',
                       onTap: () {
                         openScreen(
                           context,
@@ -316,8 +353,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: _serviceCard(
                       context,
                       icon: Icons.volunteer_activism_rounded,
-                      title: "Volunteer",
-                      subtitle: "Join rescue",
+                      title: 'Volunteer',
+                      subtitle: 'Join rescue',
                       onTap: () {
                         openScreen(
                           context,
@@ -331,8 +368,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: _serviceCard(
                       context,
                       icon: Icons.person_rounded,
-                      title: "Profile",
-                      subtitle: "My account",
+                      title: 'Profile',
+                      subtitle: 'My account',
                       onTap: () {
                         openScreen(
                           context,
@@ -352,8 +389,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: _serviceCard(
                       context,
                       icon: Icons.settings_rounded,
-                      title: "Settings",
-                      subtitle: "App controls",
+                      title: 'Settings',
+                      subtitle: 'App controls',
                       onTap: () {
                         openScreen(
                           context,
@@ -367,14 +404,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 28),
 
+              // ==================================================
+              // NEARBY SHARE
+              // ==================================================
+
               Row(
                 children: [
                   Expanded(
                     child: _serviceCard(
                       context,
                       icon: Icons.hub_rounded,
-                      title: "Nearby Share",
-                      subtitle: "Share SOS nearby",
+                      title: 'Nearby Share',
+                      subtitle: 'Share SOS nearby',
                       onTap: () {
                         openScreen(
                           context,
@@ -388,8 +429,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 28),
 
+              // ==================================================
+              // RESCUE NETWORK
+              // ==================================================
+
               const Text(
-                "Rescue Network",
+                'Rescue Network',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -438,7 +483,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  "Offline Rescue Network",
+                                  'Offline Rescue Network',
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
@@ -446,7 +491,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                                 SizedBox(height: 4),
                                 Text(
-                                  "Nearby devices available",
+                                  'Nearby devices available',
                                   style: TextStyle(
                                     color: Colors.white38,
                                     fontSize: 12,
@@ -488,7 +533,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           SizedBox(width: 7),
                           Text(
-                            "4 nearby nodes connected",
+                            '4 nearby nodes connected',
                             style: TextStyle(
                               color: Colors.green,
                               fontSize: 12,
@@ -502,6 +547,10 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
 
               const SizedBox(height: 25),
+
+              // ==================================================
+              // EMERGENCY TIP
+              // ==================================================
 
               Container(
                 width: double.infinity,
@@ -519,25 +568,29 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: Color(0xFFFF6B00),
                       size: 27,
                     ),
+
                     SizedBox(width: 13),
+
                     Expanded(
                       child: Column(
                         crossAxisAlignment:
                             CrossAxisAlignment.start,
                         children: [
                           Text(
-                            "Emergency Tip",
+                            'Emergency Tip',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                             ),
                           ),
+
                           SizedBox(height: 5),
+
                           Text(
                             "If the internet is unavailable, use RescueLink's offline network to transmit your emergency request.",
                             style: TextStyle(
                               color: Colors.white54,
-                              fontSize: 12,
-                              height: 1.4,
+                              fontSize: 11,
+                              height: 1.5,
                             ),
                           ),
                         ],
@@ -546,24 +599,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
-
-              const SizedBox(height: 20),
-
-              const Center(
-                child: Text(
-                  "RescueLink • Offline Disaster Communication",
-                  style: TextStyle(
-                    color: Colors.white30,
-                    fontSize: 11,
-                  ),
-                ),
-              ),
             ],
           ),
         ),
       ),
     );
   }
+
+  // ==========================================================
+  // SERVICE CARD
+  // ==========================================================
 
   Widget _serviceCard(
     BuildContext context, {
@@ -575,55 +620,63 @@ class _HomeScreenState extends State<HomeScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 125,
-        padding: const EdgeInsets.all(15),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: const Color(0xFF151B23),
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(17),
           border: Border.all(
             color: const Color(0xFF252D38),
           ),
         ),
-        child: Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
+        child: Row(
           children: [
             Container(
-              width: 43,
-              height: 43,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
-                color: const Color(0xFFFF6B00)
-                    .withOpacity(0.12),
-                borderRadius:
-                    BorderRadius.circular(13),
+                color:
+                    const Color(0xFFFF6B00).withOpacity(0.12),
+                borderRadius: BorderRadius.circular(13),
               ),
               child: Icon(
                 icon,
                 color: const Color(0xFFFF6B00),
-                size: 24,
+                size: 25,
               ),
             ),
 
-            const Spacer(),
+            const SizedBox(width: 12),
 
-            Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
+            Expanded(
+              child: Column(
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  const SizedBox(height: 4),
+
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: Colors.white38,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
               ),
             ),
 
-            const SizedBox(height: 3),
-
-            Text(
-              subtitle,
-              style: const TextStyle(
-                color: Colors.white38,
-                fontSize: 11,
-              ),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 14,
+              color: Colors.white38,
             ),
           ],
         ),
@@ -631,32 +684,61 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ==========================================================
+  // NETWORK NODE
+  // ==========================================================
+
   Widget _networkNode() {
     return Container(
-      width: 14,
-      height: 14,
-      decoration: const BoxDecoration(
+      width: 28,
+      height: 28,
+      decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: Color(0xFFFF6B00),
+        color: Colors.green.withOpacity(0.12),
+        border: Border.all(
+          color: Colors.green.withOpacity(0.5),
+          width: 1.5,
+        ),
+      ),
+      child: const Center(
+        child: Icon(
+          Icons.wifi_rounded,
+          size: 14,
+          color: Colors.green,
+        ),
       ),
     );
   }
+
+  // ==========================================================
+  // NETWORK LINE
+  // ==========================================================
 
   Widget _networkLine() {
     return Expanded(
       child: Container(
         height: 2,
-        color: const Color(0xFFFF6B00),
+        margin: const EdgeInsets.symmetric(
+          horizontal: 5,
+        ),
+        color: Colors.green.withOpacity(0.35),
       ),
     );
   }
 
+  // ==========================================================
+  // NETWORK DIALOG
+  // ==========================================================
+
   void _showNetworkDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return AlertDialog(
           backgroundColor: const Color(0xFF151B23),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
           title: const Row(
             children: [
               Icon(
@@ -664,59 +746,34 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: Color(0xFFFF6B00),
               ),
               SizedBox(width: 10),
-              Text("Rescue Network"),
+              Expanded(
+                child: Text(
+                  'Rescue Network',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
             ],
           ),
-          content: const Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: Icon(
-                  Icons.circle,
-                  color: Colors.green,
-                  size: 12,
-                ),
-                title: Text("Rescue Node 01"),
-                subtitle: Text("Connected"),
-              ),
-              ListTile(
-                leading: Icon(
-                  Icons.circle,
-                  color: Colors.green,
-                  size: 12,
-                ),
-                title: Text("Rescue Node 02"),
-                subtitle: Text("Connected"),
-              ),
-              ListTile(
-                leading: Icon(
-                  Icons.circle,
-                  color: Colors.green,
-                  size: 12,
-                ),
-                title: Text("Rescue Node 03"),
-                subtitle: Text("Connected"),
-              ),
-              ListTile(
-                leading: Icon(
-                  Icons.circle,
-                  color: Colors.green,
-                  size: 12,
-                ),
-                title: Text("Rescue Node 04"),
-                subtitle: Text("Connected"),
-              ),
-            ],
+          content: const Text(
+            'RescueLink is ready to communicate with nearby devices through the offline rescue network.',
+            style: TextStyle(
+              color: Colors.white70,
+              height: 1.5,
+            ),
           ),
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(context);
+                Navigator.pop(dialogContext);
               },
               child: const Text(
-                "CLOSE",
+                'OK',
                 style: TextStyle(
                   color: Color(0xFFFF6B00),
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),

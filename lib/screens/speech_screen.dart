@@ -1,8 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:vosk_flutter/vosk_flutter.dart';
 
 class SpeechScreen extends StatefulWidget {
-  const SpeechScreen({super.key});
+  final Function(String) onResult;
+
+  const SpeechScreen({
+    super.key,
+    required this.onResult,
+  });
 
   @override
   State<SpeechScreen> createState() => _SpeechScreenState();
@@ -18,8 +25,16 @@ class _SpeechScreenState extends State<SpeechScreen> {
   Recognizer? _recognizer;
   SpeechService? _speechService;
 
+  StreamSubscription<String>? _resultSubscription;
+  StreamSubscription<String>? _partialSubscription;
+
   bool _isListening = false;
+  bool _isDisposing = false;
+  bool _resultSent = false;
+
   String _status = 'Loading Vosk model...';
+  String _partialText = '';
+  String _finalText = '';
 
   @override
   void initState() {
@@ -33,25 +48,36 @@ class _SpeechScreenState extends State<SpeechScreen> {
         'assets/models/vosk-model-small-en-us-0.15.zip',
       );
 
-      final model = await _vosk.createModel(modelPath);
+      if (_isDisposing) return;
 
-      final recognizer = await _vosk.createRecognizer(
-        model: model,
+      _model = await _vosk.createModel(modelPath);
+
+      if (_isDisposing) return;
+
+      _recognizer = await _vosk.createRecognizer(
+        model: _model!,
         sampleRate: sampleRate,
       );
 
-      final speechService = await _vosk.initSpeechService(recognizer);
+      if (_isDisposing) return;
+
+      /*
+       * IMPORTANT:
+       * Create SpeechService only once for this screen.
+       */
+      _speechService = await _vosk.initSpeechService(_recognizer!);
+
+      if (_isDisposing) return;
 
       if (!mounted) return;
 
       setState(() {
-        _model = model;
-        _recognizer = recognizer;
-        _speechService = speechService;
         _status = 'Vosk is ready!';
       });
+
+      _setupResultListener();
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || _isDisposing) return;
 
       setState(() {
         _status = 'Error:\n$e';
@@ -59,53 +85,200 @@ class _SpeechScreenState extends State<SpeechScreen> {
     }
   }
 
+  void _setupResultListener() {
+    final service = _speechService;
+
+    if (service == null) return;
+
+    _resultSubscription?.cancel();
+
+    _resultSubscription = service.onResult().listen(
+      (result) {
+        if (!mounted || _isDisposing) return;
+
+        final text = _extractText(result);
+
+        if (text.isEmpty) return;
+
+        _resultSent = true;
+
+        setState(() {
+          _finalText = text;
+          _partialText = '';
+          _isListening = false;
+          _status = 'Speech recognized';
+        });
+
+        /*
+         * Send recognized text back to EmergencyScreen.
+         */
+        widget.onResult(text);
+      },
+      onError: (error) {
+        if (!mounted || _isDisposing) return;
+
+        setState(() {
+          _status = 'Recognition error:\n$error';
+          _isListening = false;
+        });
+      },
+    );
+  }
+
+  void _setupPartialListener() {
+    final service = _speechService;
+
+    if (service == null) return;
+
+    _partialSubscription?.cancel();
+
+    _partialSubscription = service.onPartial().listen(
+      (result) {
+        if (!mounted || _isDisposing) return;
+
+        final text = _extractText(result);
+
+        setState(() {
+          _partialText = text;
+        });
+      },
+      onError: (_) {},
+    );
+  }
+
+  String _extractText(String result) {
+    try {
+      final cleaned = result.trim();
+
+      if (cleaned.isEmpty) {
+        return '';
+      }
+
+      final match =
+          RegExp(r'"text"\s*:\s*"([^"]*)"').firstMatch(cleaned);
+
+      if (match != null) {
+        return match.group(1)?.trim() ?? '';
+      }
+
+      final partialMatch =
+          RegExp(r'"partial"\s*:\s*"([^"]*)"').firstMatch(cleaned);
+
+      if (partialMatch != null) {
+        return partialMatch.group(1)?.trim() ?? '';
+      }
+
+      return cleaned;
+    } catch (_) {
+      return result.trim();
+    }
+  }
+
   Future<void> _startRecognition() async {
-    if (_speechService == null) return;
+    final service = _speechService;
+
+    if (service == null) {
+      return;
+    }
+
+    if (_isListening || _isDisposing) {
+      return;
+    }
 
     try {
-      await _speechService!.start();
+      _resultSent = false;
+      _finalText = '';
+      _partialText = '';
 
-      if (!mounted) return;
+      _setupPartialListener();
+
+      await service.start();
+
+      if (!mounted || _isDisposing) return;
 
       setState(() {
         _isListening = true;
         _status = 'Listening... Speak now';
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || _isDisposing) return;
 
       setState(() {
+        _isListening = false;
         _status = 'Microphone error:\n$e';
       });
     }
   }
 
   Future<void> _stopRecognition() async {
-    if (_speechService == null) return;
+    final service = _speechService;
+
+    if (service == null || !_isListening || _isDisposing) {
+      return;
+    }
 
     try {
-      await _speechService!.stop();
+      await service.stop();
 
-      if (!mounted) return;
+      if (!mounted || _isDisposing) return;
 
       setState(() {
         _isListening = false;
-        _status = 'Recognition stopped';
+        _status = _finalText.isEmpty
+            ? 'Recognition stopped'
+            : 'Speech recognized';
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || _isDisposing) return;
 
       setState(() {
+        _isListening = false;
         _status = 'Stop error:\n$e';
       });
     }
   }
 
+  Future<void> _closeScreen() async {
+    if (_isDisposing) return;
+
+    _isDisposing = true;
+
+    try {
+      if (_isListening && _speechService != null) {
+        await _speechService!.stop();
+      }
+    } catch (_) {}
+
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
+  }
+
   @override
   void dispose() {
-    _speechService?.dispose();
+    _isDisposing = true;
+
+    _resultSubscription?.cancel();
+    _partialSubscription?.cancel();
+
+    /*
+     * Do NOT call SpeechService.dispose() here.
+     *
+     * vosk_flutter keeps the native SpeechService instance.
+     * Disposing it here can leave the Android side in a state where
+     * the next SpeechScreen gets:
+     *
+     * "SpeechService instance already exist"
+     */
+
+    _speechService = null;
+
     _recognizer?.dispose();
+    _recognizer = null;
+
     _model?.dispose();
+    _model = null;
+
     super.dispose();
   }
 
@@ -116,6 +289,10 @@ class _SpeechScreenState extends State<SpeechScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Voice Recognition'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: _closeScreen,
+        ),
       ),
       body: Center(
         child: Padding(
@@ -136,56 +313,64 @@ class _SpeechScreenState extends State<SpeechScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+
                     const SizedBox(height: 20),
+
                     Text(
                       _status,
                       textAlign: TextAlign.center,
                       style: const TextStyle(fontSize: 18),
                     ),
+
                     const SizedBox(height: 30),
+
                     const Text(
-                      'Partial result:',
+                      'Live speech:',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    StreamBuilder<String>(
-                      stream: service.onPartial(),
-                      builder: (context, snapshot) {
-                        return Text(
-                          snapshot.data ?? '',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 20),
-                        );
-                      },
+
+                    const SizedBox(height: 10),
+
+                    Text(
+                      _partialText,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 20),
                     ),
+
                     const SizedBox(height: 30),
+
                     const Text(
-                      'Final result:',
+                      'Recognized text:',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    StreamBuilder<String>(
-                      stream: service.onResult(),
-                      builder: (context, snapshot) {
-                        return Text(
-                          snapshot.data ?? '',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 20),
-                        );
-                      },
+
+                    const SizedBox(height: 10),
+
+                    Text(
+                      _finalText,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
+
                     const SizedBox(height: 40),
-                    ElevatedButton(
+
+                    ElevatedButton.icon(
                       onPressed: _isListening
                           ? _stopRecognition
                           : _startRecognition,
-                      child: Text(
+                      icon: Icon(
+                        _isListening ? Icons.stop : Icons.mic,
+                      ),
+                      label: Text(
                         _isListening
                             ? 'Stop Recognition'
                             : 'Start Voice Recognition',

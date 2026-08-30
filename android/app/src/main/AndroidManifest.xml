@@ -1,6 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!-- ===================================================== -->
+    <!-- MICROPHONE - REQUIRED FOR VOSK VOICE RECOGNITION -->
+    <!-- ===================================================== -->
+
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!-- ===================================================== -->
     <!-- LOCATION PERMISSIONS -->
     <!-- ===================================================== -->
 
@@ -39,7 +45,7 @@
         android:name="android.permission.INTERNET" />
 
     <!-- ===================================================== -->
-    <!-- OPTIONAL: ANDROID 13+ NEARBY WIFI -->
+    <!-- ANDROID 13+ NEARBY WIFI -->
     <!-- ===================================================== -->
 
     <uses-permission

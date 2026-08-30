@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 import '../models/rescue_ticket.dart';
 import '../app_data.dart';
 import '../services/location_service.dart';
+import 'speech_screen.dart';
 
 class EmergencyScreen extends StatefulWidget {
   const EmergencyScreen({super.key});
 
   @override
-  State<EmergencyScreen> createState() =>
-      _EmergencyScreenState();
+  State<EmergencyScreen> createState() => _EmergencyScreenState();
 }
 
 class _EmergencyScreenState extends State<EmergencyScreen> {
@@ -42,8 +42,6 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
   void initState() {
     super.initState();
 
-    // Automatically request and detect location
-    // when the Emergency screen opens.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       getLocation();
     });
@@ -54,6 +52,38 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
     messageController.dispose();
     super.dispose();
   }
+
+  // ==========================================================
+  // OPEN VOSK SPEECH SCREEN
+  // ==========================================================
+
+
+Future<void> _openSpeechScreen() async {
+  await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => SpeechScreen(
+        onResult: (String text) {
+          if (text.trim().isEmpty) return;
+
+          if (!mounted) return;
+
+          setState(() {
+            messageController.text = text.trim();
+
+            messageController.selection =
+                TextSelection.fromPosition(
+              TextPosition(
+                offset: messageController.text.length,
+              ),
+            );
+          });
+        },
+      ),
+    ),
+  );
+}
+
 
   // ==========================================================
   // GET CURRENT LOCATION
@@ -139,7 +169,6 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
         createdAt: DateTime.now(),
       );
 
-      // Save request to existing AppData.
       AppData.instance.addRequest(
         ticketId: ticket.ticketId,
         type: ticket.type,
@@ -167,7 +196,6 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
         messageController.clear();
       });
 
-      // Get fresh location after clearing the form.
       await getLocation();
     } catch (e) {
       if (!mounted) return;
@@ -797,7 +825,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
   }
 
   // ==========================================================
-  // MESSAGE
+  // MESSAGE FIELD + VOSK MICROPHONE
   // ==========================================================
 
   Widget _buildMessageField() {
@@ -813,9 +841,12 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
         hintStyle: const TextStyle(
           color: Colors.white38,
         ),
+
         filled: true,
+
         fillColor:
             const Color(0xFF151B23),
+
         prefixIcon: const Padding(
           padding: EdgeInsets.only(
             left: 15,
@@ -827,16 +858,48 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
             color: Color(0xFFFF6B00),
           ),
         ),
+
         prefixIconConstraints:
             const BoxConstraints(
           minWidth: 50,
           minHeight: 50,
         ),
+
+        // ======================================================
+        // VOSK MICROPHONE BUTTON
+        // ======================================================
+
+        suffixIcon: Padding(
+          padding: const EdgeInsets.only(
+            right: 8,
+            top: 8,
+            bottom: 8,
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFFF6B00)
+                  .withOpacity(0.15),
+              borderRadius:
+                  BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              tooltip: 'Tap and Speak',
+              onPressed: _openSpeechScreen,
+              icon: const Icon(
+                Icons.mic_rounded,
+                color: Color(0xFFFF6B00),
+                size: 27,
+              ),
+            ),
+          ),
+        ),
+
         border: OutlineInputBorder(
           borderRadius:
               BorderRadius.circular(15),
           borderSide: BorderSide.none,
         ),
+
         enabledBorder:
             OutlineInputBorder(
           borderRadius:
@@ -846,6 +909,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
             color: Colors.white12,
           ),
         ),
+
         focusedBorder:
             OutlineInputBorder(
           borderRadius:

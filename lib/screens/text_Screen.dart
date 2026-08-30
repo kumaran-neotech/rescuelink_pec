@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'speech_screen.dart';
 
 class TextScreen extends StatefulWidget {
   const TextScreen({super.key});
@@ -14,6 +15,24 @@ class _TextScreenState extends State<TextScreen> {
   void dispose() {
     messageController.dispose();
     super.dispose();
+  }
+
+  // ==========================================================
+  // OPEN SPEECH SCREEN AND GET RECOGNIZED TEXT BACK
+  // ==========================================================
+  Future<void> _openSpeechScreen() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SpeechScreen(
+          onResult: (recognizedText) {
+            setState(() {
+              messageController.text = recognizedText;
+            });
+          },
+        ),
+      ),
+    );
   }
 
   @override
@@ -52,26 +71,29 @@ class _TextScreenState extends State<TextScreen> {
 
             const SizedBox(height: 30),
 
-            // BIG MIC
-            Container(
-              width: 140,
-              height: 140,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFFFF6B00),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFFF6B00)
-                        .withOpacity(0.3),
-                    blurRadius: 30,
-                    spreadRadius: 6,
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.mic_rounded,
-                size: 70,
-                color: Colors.white,
+            // BIG MIC - NOW TAPPABLE
+            GestureDetector(
+              onTap: _openSpeechScreen,
+              child: Container(
+                width: 140,
+                height: 140,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFFF6B00),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFFF6B00)
+                          .withOpacity(0.3),
+                      blurRadius: 30,
+                      spreadRadius: 6,
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.mic_rounded,
+                  size: 70,
+                  color: Colors.white,
+                ),
               ),
             ),
 
