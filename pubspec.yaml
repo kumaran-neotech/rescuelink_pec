@@ -1,11 +1,11 @@
-name: rescuelink_pec_01
-description: RescueLink App
+name: rescuelink
+description: RescueLink disaster rescue communication application
 publish_to: 'none'
 
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.9.0
+  sdk: ">=3.0.0 <4.0.0"
 
 dependencies:
   flutter:
@@ -13,18 +13,17 @@ dependencies:
 
   cupertino_icons: ^1.0.8
 
-  # Local Storage
+  nearby_connections: ^4.3.0
+  permission_handler: ^12.0.1
   hive: ^2.2.3
   hive_flutter: ^1.1.0
-
-  # Location
-  geolocator: ^13.0.1
+  geolocator: ^14.0.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
 
 flutter:
   uses-material-design: true

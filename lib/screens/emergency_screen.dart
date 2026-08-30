@@ -1,8 +1,8 @@
-import 'dart:math';
-import '../models/rescue_ticket.dart';
 import 'package:flutter/material.dart';
+
+import '../models/rescue_ticket.dart';
 import '../app_data.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import '../services/location_service.dart';
 
 class EmergencyScreen extends StatefulWidget {
   const EmergencyScreen({super.key});
@@ -12,124 +12,254 @@ class EmergencyScreen extends StatefulWidget {
       _EmergencyScreenState();
 }
 
-class _EmergencyScreenState
-    extends State<EmergencyScreen> {
-
-  // ==========================================================
-  // CONTROLLERS
-  // ==========================================================
-
-  final TextEditingController locationController =
-      TextEditingController();
-
+class _EmergencyScreenState extends State<EmergencyScreen> {
   final TextEditingController messageController =
       TextEditingController();
 
-  // ==========================================================
-  // EMERGENCY OPTIONS
-  // ==========================================================
-
   String? selectedEmergency;
-
-  String selectedPriority = "High";
+  String selectedPriority = 'High';
 
   int victims = 1;
 
+  String currentLocation = '';
+  bool loadingLocation = false;
+  bool creatingSOS = false;
+
   final List<String> emergencyTypes = [
-    "Medical Emergency",
-    "Fire",
-    "Flood",
-    "Earthquake",
-    "Landslide",
-    "Accident",
-    "Trapped Person",
-    "Building Collapse",
-    "Missing Person",
-    "Other",
+    'Medical Emergency',
+    'Fire',
+    'Flood',
+    'Earthquake',
+    'Landslide',
+    'Accident',
+    'Trapped Person',
+    'Building Collapse',
+    'Missing Person',
+    'Other',
   ];
 
-  // ==========================================================
-  // DISPOSE
-  // ==========================================================
+  @override
+  void initState() {
+    super.initState();
+
+    // Automatically request and detect location
+    // when the Emergency screen opens.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      getLocation();
+    });
+  }
 
   @override
   void dispose() {
-    locationController.dispose();
     messageController.dispose();
     super.dispose();
+  }
+
+  // ==========================================================
+  // GET CURRENT LOCATION
+  // ==========================================================
+
+  Future<void> getLocation() async {
+    if (!mounted) return;
+
+    setState(() {
+      loadingLocation = true;
+    });
+
+    try {
+      final String location =
+          await LocationService.getLocationText();
+
+      if (!mounted) return;
+
+      setState(() {
+        currentLocation = location;
+        loadingLocation = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        loadingLocation = false;
+      });
+
+      _showError(
+        e.toString().replaceFirst('Exception: ', ''),
+      );
+    }
   }
 
   // ==========================================================
   // CREATE SOS
   // ==========================================================
 
-  void createSOS() {
-  if (selectedEmergency == null) {
-    _showError("Please select the type of emergency.");
-    return;
+  Future<void> createSOS() async {
+    if (creatingSOS) return;
+
+    if (selectedEmergency == null) {
+      _showError(
+        'Please select the type of emergency.',
+      );
+      return;
+    }
+
+    if (currentLocation.isEmpty) {
+      _showError(
+        'Current location is not available. '
+        'Please tap the location button.',
+      );
+      return;
+    }
+
+    final String message =
+        messageController.text.trim();
+
+    if (message.isEmpty) {
+      _showError(
+        'Please enter an emergency message.',
+      );
+      return;
+    }
+
+    setState(() {
+      creatingSOS = true;
+    });
+
+    try {
+      final String ticketId =
+          'RL-${DateTime.now().millisecondsSinceEpoch}';
+
+      final RescueTicket ticket = RescueTicket(
+        ticketId: ticketId,
+        type: selectedEmergency!,
+        location: currentLocation,
+        priority: selectedPriority,
+        victims: victims,
+        message: message,
+        createdAt: DateTime.now(),
+      );
+
+      // Save request to existing AppData.
+      AppData.instance.addRequest(
+        ticketId: ticket.ticketId,
+        type: ticket.type,
+        victims: ticket.victims,
+        location: ticket.location,
+        priority: ticket.priority,
+        message: ticket.message,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        creatingSOS = false;
+      });
+
+      await _showSuccess(ticket);
+
+      if (!mounted) return;
+
+      setState(() {
+        selectedEmergency = null;
+        selectedPriority = 'High';
+        victims = 1;
+        currentLocation = '';
+        messageController.clear();
+      });
+
+      // Get fresh location after clearing the form.
+      await getLocation();
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        creatingSOS = false;
+      });
+
+      _showError(
+        'Unable to create SOS: $e',
+      );
+    }
   }
-
-  if (locationController.text.trim().isEmpty) {
-    _showError("Please enter your location.");
-    return;
-  }
-
-  if (messageController.text.trim().isEmpty) {
-    _showError("Please enter an emergency message.");
-    return;
-  }
-
-  String ticketId =
-      "RL-${DateTime.now().millisecondsSinceEpoch}";
-
-  AppData.instance.addRequest(
-    ticketId: ticketId,
-    type: selectedEmergency!,
-    victims: victims,
-    location: locationController.text.trim(),
-    priority: selectedPriority,
-    message: messageController.text.trim(),
-  );
-
-  showDialog(
-    context: context,
-    builder: (_) => AlertDialog(
-      title: const Text("SOS Generated"),
-      content: Text(
-        "Ticket ID:\n$ticketId",
-      ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          child: const Text("OK"),
-        ),
-      ],
-    ),
-  );
-
-  setState(() {
-    selectedEmergency = null;
-    selectedPriority = "High";
-    victims = 1;
-    locationController.clear();
-    messageController.clear();
-  });
-}
 
   // ==========================================================
-  // ERROR MESSAGE
+  // ERROR
   // ==========================================================
 
   void _showError(String message) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(message),
-      backgroundColor: Colors.red,
-    ),
-  );
-}
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  // ==========================================================
+  // SUCCESS
+  // ==========================================================
+
+  Future<void> _showSuccess(
+    RescueTicket ticket,
+  ) async {
+    if (!mounted) return;
+
+    await showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF151B23),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          title: const Row(
+            children: [
+              Icon(
+                Icons.check_circle,
+                color: Colors.green,
+              ),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'SOS Generated',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            'Emergency request created successfully.\n\n'
+            'Ticket ID:\n${ticket.ticketId}\n\n'
+            'Location:\n${ticket.location}',
+            style: const TextStyle(
+              color: Colors.white70,
+              height: 1.5,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+              },
+              child: const Text(
+                'OK',
+                style: TextStyle(
+                  color: Color(0xFFFF6B00),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   // ==========================================================
   // BUILD
@@ -144,7 +274,7 @@ class _EmergencyScreenState
         backgroundColor: const Color(0xFF0B0F14),
         elevation: 0,
         title: const Text(
-          "Emergency SOS",
+          'Emergency SOS',
           style: TextStyle(
             fontWeight: FontWeight.bold,
           ),
@@ -158,21 +288,12 @@ class _EmergencyScreenState
             crossAxisAlignment:
                 CrossAxisAlignment.start,
             children: [
-
-              // ==================================================
-              // SOS HEADER
-              // ==================================================
-
               _buildHeader(),
 
               const SizedBox(height: 25),
 
-              // ==================================================
-              // EMERGENCY TYPE
-              // ==================================================
-
               _sectionTitle(
-                "Type of Emergency",
+                'Type of Emergency',
                 Icons.warning_amber_rounded,
               ),
 
@@ -182,12 +303,8 @@ class _EmergencyScreenState
 
               const SizedBox(height: 25),
 
-              // ==================================================
-              // NUMBER OF VICTIMS
-              // ==================================================
-
               _sectionTitle(
-                "Number of Victims",
+                'Number of Victims',
                 Icons.people_alt_outlined,
               ),
 
@@ -197,12 +314,8 @@ class _EmergencyScreenState
 
               const SizedBox(height: 25),
 
-              // ==================================================
-              // PRIORITY
-              // ==================================================
-
               _sectionTitle(
-                "Emergency Priority",
+                'Emergency Priority',
                 Icons.priority_high_rounded,
               ),
 
@@ -212,145 +325,31 @@ class _EmergencyScreenState
 
               const SizedBox(height: 25),
 
-              // ==================================================
-              // LOCATION
-              // ==================================================
-
               _sectionTitle(
-                "Location",
+                'Current Location',
                 Icons.location_on_outlined,
               ),
 
               const SizedBox(height: 12),
 
-              TextField(
-                controller: locationController,
-                style: const TextStyle(
-                  color: Colors.white,
-                ),
-                decoration: InputDecoration(
-                  hintText:
-                      "Enter your current location",
-                  hintStyle: const TextStyle(
-                    color: Colors.white38,
-                  ),
-                  filled: true,
-                  fillColor:
-                      const Color(0xFF151B23),
-                  prefixIcon: const Icon(
-                    Icons.location_on_outlined,
-                    color: Color(0xFFFF6B00),
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius:
-                        BorderRadius.circular(15),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder:
-                      OutlineInputBorder(
-                    borderRadius:
-                        BorderRadius.circular(15),
-                    borderSide:
-                        const BorderSide(
-                      color: Colors.white12,
-                    ),
-                  ),
-                  focusedBorder:
-                      OutlineInputBorder(
-                    borderRadius:
-                        BorderRadius.circular(15),
-                    borderSide:
-                        const BorderSide(
-                      color: Color(0xFFFF6B00),
-                    ),
-                  ),
-                ),
-              ),
+              _buildLocationCard(),
 
               const SizedBox(height: 25),
 
-              // ==================================================
-              // MERGED TEXT SOS
-              // ==================================================
-
               _sectionTitle(
-                "Emergency Message",
+                'Emergency Message',
                 Icons.message_outlined,
               ),
 
               const SizedBox(height: 12),
 
-              TextField(
-                controller: messageController,
-                maxLines: 5,
-                style: const TextStyle(
-                  color: Colors.white,
-                ),
-                decoration: InputDecoration(
-                  hintText:
-                      "Describe your emergency...",
-                  hintStyle: const TextStyle(
-                    color: Colors.white38,
-                  ),
-                  filled: true,
-                  fillColor:
-                      const Color(0xFF151B23),
-                  prefixIcon: const Padding(
-                    padding: EdgeInsets.only(
-                      left: 15,
-                      right: 10,
-                      top: 15,
-                    ),
-                    child: Icon(
-                      Icons.message_outlined,
-                      color: Color(0xFFFF6B00),
-                    ),
-                  ),
-                  prefixIconConstraints:
-                      const BoxConstraints(
-                    minWidth: 50,
-                    minHeight: 50,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius:
-                        BorderRadius.circular(15),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder:
-                      OutlineInputBorder(
-                    borderRadius:
-                        BorderRadius.circular(15),
-                    borderSide:
-                        const BorderSide(
-                      color: Colors.white12,
-                    ),
-                  ),
-                  focusedBorder:
-                      OutlineInputBorder(
-                    borderRadius:
-                        BorderRadius.circular(15),
-                    borderSide:
-                        const BorderSide(
-                      color: Color(0xFFFF6B00),
-                      width: 1.5,
-                    ),
-                  ),
-                ),
-              ),
+              _buildMessageField(),
 
               const SizedBox(height: 30),
-
-              // ==================================================
-              // CREATE SOS BUTTON
-              // ==================================================
 
               _buildCreateButton(),
 
               const SizedBox(height: 20),
-
-              // ==================================================
-              // SAFETY MESSAGE
-              // ==================================================
 
               _buildSafetyMessage(),
 
@@ -373,28 +372,25 @@ class _EmergencyScreenState
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            const Color(0xFFFF6B00)
-                .withOpacity(0.20),
+            const Color(0xFFFF6B00).withOpacity(0.20),
             const Color(0xFF151B23),
           ],
         ),
-        borderRadius:
-            BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: const Color(0xFFFF6B00)
-              .withOpacity(0.30),
+          color:
+              const Color(0xFFFF6B00).withOpacity(0.30),
         ),
       ),
       child: Row(
         children: [
-
           Container(
             width: 65,
             height: 65,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: const Color(0xFFFF6B00)
-                  .withOpacity(0.15),
+              color:
+                  const Color(0xFFFF6B00).withOpacity(0.15),
             ),
             child: const Icon(
               Icons.sos_rounded,
@@ -410,19 +406,16 @@ class _EmergencyScreenState
               crossAxisAlignment:
                   CrossAxisAlignment.start,
               children: [
-
                 Text(
-                  "Emergency SOS",
+                  'Emergency SOS',
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-
                 SizedBox(height: 5),
-
                 Text(
-                  "Send your emergency details to nearby rescue volunteers.",
+                  'Send your emergency details to nearby rescue volunteers.',
                   style: TextStyle(
                     color: Colors.white54,
                     fontSize: 12,
@@ -447,15 +440,12 @@ class _EmergencyScreenState
   ) {
     return Row(
       children: [
-
         Icon(
           icon,
           size: 20,
           color: const Color(0xFFFF6B00),
         ),
-
         const SizedBox(width: 8),
-
         Text(
           title,
           style: const TextStyle(
@@ -477,8 +467,7 @@ class _EmergencyScreenState
           const EdgeInsets.symmetric(horizontal: 15),
       decoration: BoxDecoration(
         color: const Color(0xFF151B23),
-        borderRadius:
-            BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(15),
         border: Border.all(
           color: Colors.white12,
         ),
@@ -490,7 +479,7 @@ class _EmergencyScreenState
           dropdownColor:
               const Color(0xFF151B23),
           hint: const Text(
-            "Select emergency type",
+            'Select emergency type',
             style: TextStyle(
               color: Colors.white38,
             ),
@@ -512,7 +501,7 @@ class _EmergencyScreenState
               );
             },
           ).toList(),
-          onChanged: (value) {
+          onChanged: (String? value) {
             setState(() {
               selectedEmergency = value;
             });
@@ -535,8 +524,7 @@ class _EmergencyScreenState
       ),
       decoration: BoxDecoration(
         color: const Color(0xFF151B23),
-        borderRadius:
-            BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(15),
         border: Border.all(
           color: Colors.white12,
         ),
@@ -545,17 +533,17 @@ class _EmergencyScreenState
         mainAxisAlignment:
             MainAxisAlignment.spaceBetween,
         children: [
-
-          const Text(
-            "People requiring help",
-            style: TextStyle(
-              color: Colors.white70,
+          const Expanded(
+            child: Text(
+              'People requiring help',
+              style: TextStyle(
+                color: Colors.white70,
+              ),
             ),
           ),
 
           Row(
             children: [
-
               _counterButton(
                 Icons.remove,
                 () {
@@ -571,7 +559,7 @@ class _EmergencyScreenState
                 width: 55,
                 child: Center(
                   child: Text(
-                    "$victims",
+                    '$victims',
                     style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -603,16 +591,14 @@ class _EmergencyScreenState
   ) {
     return InkWell(
       onTap: onPressed,
-      borderRadius:
-          BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(12),
       child: Container(
         width: 42,
         height: 42,
         decoration: BoxDecoration(
-          color: const Color(0xFFFF6B00)
-              .withOpacity(0.12),
-          borderRadius:
-              BorderRadius.circular(12),
+          color:
+              const Color(0xFFFF6B00).withOpacity(0.12),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Icon(
           icon,
@@ -623,34 +609,29 @@ class _EmergencyScreenState
   }
 
   // ==========================================================
-  // PRIORITY SELECTOR
+  // PRIORITY
   // ==========================================================
 
   Widget _buildPrioritySelector() {
     return Row(
       children: [
-
         Expanded(
           child: _priorityButton(
-            "Low",
+            'Low',
             Colors.green,
           ),
         ),
-
         const SizedBox(width: 10),
-
         Expanded(
           child: _priorityButton(
-            "Medium",
+            'Medium',
             Colors.orange,
           ),
         ),
-
         const SizedBox(width: 10),
-
         Expanded(
           child: _priorityButton(
-            "High",
+            'High',
             Colors.redAccent,
           ),
         ),
@@ -662,7 +643,7 @@ class _EmergencyScreenState
     String priority,
     Color color,
   ) {
-    final selected =
+    final bool selected =
         selectedPriority == priority;
 
     return GestureDetector(
@@ -675,52 +656,205 @@ class _EmergencyScreenState
         duration:
             const Duration(milliseconds: 200),
         padding:
-            const EdgeInsets.symmetric(
-          vertical: 14,
-        ),
+            const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
           color: selected
               ? color.withOpacity(0.20)
               : const Color(0xFF151B23),
-          borderRadius:
-              BorderRadius.circular(13),
+          borderRadius: BorderRadius.circular(13),
           border: Border.all(
-            color: selected
-                ? color
-                : Colors.white12,
+            color:
+                selected ? color : Colors.white12,
             width: selected ? 1.5 : 1,
           ),
         ),
         child: Column(
           children: [
-
             Icon(
-              priority == "High"
+              priority == 'High'
                   ? Icons.priority_high
-                  : priority == "Medium"
+                  : priority == 'Medium'
                       ? Icons.remove
                       : Icons.check,
-              color: selected
-                  ? color
-                  : Colors.white38,
+              color:
+                  selected ? color : Colors.white38,
             ),
-
             const SizedBox(height: 5),
-
             Text(
               priority,
               style: TextStyle(
-                color: selected
-                    ? color
-                    : Colors.white54,
-                fontWeight:
-                    selected
-                        ? FontWeight.bold
-                        : FontWeight.normal,
+                color:
+                    selected ? color : Colors.white54,
+                fontWeight: selected
+                    ? FontWeight.bold
+                    : FontWeight.normal,
                 fontSize: 12,
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  // ==========================================================
+  // LOCATION CARD
+  // ==========================================================
+
+  Widget _buildLocationCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: const Color(0xFF151B23),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(
+          color: currentLocation.isNotEmpty
+              ? Colors.green.withOpacity(0.35)
+              : Colors.white12,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 45,
+            height: 45,
+            decoration: BoxDecoration(
+              color: currentLocation.isNotEmpty
+                  ? Colors.green.withOpacity(0.12)
+                  : const Color(0xFFFF6B00)
+                      .withOpacity(0.12),
+              borderRadius:
+                  BorderRadius.circular(12),
+            ),
+            child: Icon(
+              currentLocation.isNotEmpty
+                  ? Icons.location_on
+                  : Icons.location_searching,
+              color: currentLocation.isNotEmpty
+                  ? Colors.green
+                  : const Color(0xFFFF6B00),
+            ),
+          ),
+
+          const SizedBox(width: 12),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
+              children: [
+                Text(
+                  currentLocation.isEmpty
+                      ? 'Detecting location...'
+                      : 'Location detected',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+                const SizedBox(height: 4),
+
+                Text(
+                  currentLocation.isEmpty
+                      ? 'GPS location is required for the SOS request.'
+                      : currentLocation,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white54,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(width: 8),
+
+          IconButton(
+            tooltip: 'Refresh location',
+            onPressed:
+                loadingLocation ? null : getLocation,
+            icon: loadingLocation
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child:
+                        CircularProgressIndicator(
+                      strokeWidth: 2,
+                    ),
+                  )
+                : const Icon(
+                    Icons.my_location,
+                    color: Color(0xFFFF6B00),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==========================================================
+  // MESSAGE
+  // ==========================================================
+
+  Widget _buildMessageField() {
+    return TextField(
+      controller: messageController,
+      maxLines: 5,
+      style: const TextStyle(
+        color: Colors.white,
+      ),
+      decoration: InputDecoration(
+        hintText:
+            'Describe your emergency...',
+        hintStyle: const TextStyle(
+          color: Colors.white38,
+        ),
+        filled: true,
+        fillColor:
+            const Color(0xFF151B23),
+        prefixIcon: const Padding(
+          padding: EdgeInsets.only(
+            left: 15,
+            right: 10,
+            top: 15,
+          ),
+          child: Icon(
+            Icons.message_outlined,
+            color: Color(0xFFFF6B00),
+          ),
+        ),
+        prefixIconConstraints:
+            const BoxConstraints(
+          minWidth: 50,
+          minHeight: 50,
+        ),
+        border: OutlineInputBorder(
+          borderRadius:
+              BorderRadius.circular(15),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder:
+            OutlineInputBorder(
+          borderRadius:
+              BorderRadius.circular(15),
+          borderSide:
+              const BorderSide(
+            color: Colors.white12,
+          ),
+        ),
+        focusedBorder:
+            OutlineInputBorder(
+          borderRadius:
+              BorderRadius.circular(15),
+          borderSide:
+              const BorderSide(
+            color: Color(0xFFFF6B00),
+            width: 1.5,
+          ),
         ),
       ),
     );
@@ -735,10 +869,13 @@ class _EmergencyScreenState
       width: double.infinity,
       height: 60,
       child: ElevatedButton.icon(
-        onPressed: createSOS,
+        onPressed:
+            creatingSOS ? null : createSOS,
         style: ElevatedButton.styleFrom(
           backgroundColor:
               const Color(0xFFFF6B00),
+          disabledBackgroundColor:
+              Colors.white12,
           foregroundColor: Colors.white,
           elevation: 5,
           shape: RoundedRectangleBorder(
@@ -746,13 +883,25 @@ class _EmergencyScreenState
                 BorderRadius.circular(17),
           ),
         ),
-        icon: const Icon(
-          Icons.sos_rounded,
-          size: 27,
-        ),
-        label: const Text(
-          "CREATE SOS REQUEST",
-          style: TextStyle(
+        icon: creatingSOS
+            ? const SizedBox(
+                width: 23,
+                height: 23,
+                child:
+                    CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : const Icon(
+                Icons.sos_rounded,
+                size: 27,
+              ),
+        label: Text(
+          creatingSOS
+              ? 'CREATING SOS...'
+              : 'CREATE SOS REQUEST',
+          style: const TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.bold,
             letterSpacing: 0.5,
@@ -771,8 +920,7 @@ class _EmergencyScreenState
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: Colors.green.withOpacity(0.06),
-        borderRadius:
-            BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(15),
         border: Border.all(
           color: Colors.green.withOpacity(0.15),
         ),
@@ -781,18 +929,15 @@ class _EmergencyScreenState
         crossAxisAlignment:
             CrossAxisAlignment.start,
         children: [
-
           Icon(
             Icons.info_outline,
             color: Colors.green,
             size: 20,
           ),
-
           SizedBox(width: 10),
-
           Expanded(
             child: Text(
-              "Make sure your emergency information and location are correct before creating the SOS request.",
+              'Your GPS location is automatically attached to the SOS request. Verify that location services are enabled before sending an emergency request.',
               style: TextStyle(
                 color: Colors.white54,
                 fontSize: 11,
