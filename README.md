@@ -5,7 +5,7 @@
 ![Platform](https://img.shields.io/badge/Platform-Android-green)
 ![AI](https://img.shields.io/badge/AI-Vosk-orange)
 ![Status](https://img.shields.io/badge/Status-Active-success)
-![License](https://img.shields.io/badge/License-MIT-yellow)
+
 
 ### Offline Disaster Communication & Emergency Response Network
 
@@ -182,6 +182,9 @@ RescueLink aims to ensure that no emergency request is lost simply because commu
 
 ---
 
-## License
+## Copyright
 
-MIT License
+© 2026 Team RescueLink. All rights reserved.
+
+This project and its source code may not be copied, modified, distributed, or used without explicit permission from the authors.
+
