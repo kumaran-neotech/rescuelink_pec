@@ -1,5 +1,12 @@
 #  RescueLink
 
+![Flutter](https://img.shields.io/badge/Flutter-3.0+-blue)
+![Dart](https://img.shields.io/badge/Dart-3.0-blue)
+![Platform](https://img.shields.io/badge/Platform-Android-green)
+![AI](https://img.shields.io/badge/AI-Vosk-orange)
+![Status](https://img.shields.io/badge/Status-Active-success)
+![License](https://img.shields.io/badge/License-MIT-yellow)
+
 ### Offline Disaster Communication & Emergency Response Network
 
 RescueLink is an AI-powered offline emergency communication platform designed for disaster situations where mobile towers, internet connectivity, and traditional communication systems fail.
@@ -53,7 +60,7 @@ Each emergency request generates:
 - Emergency Type
 - Timestamp
 
-### 🗺 Location Tracking
+###  Location Tracking
 
 Stores GPS coordinates when available.
 
