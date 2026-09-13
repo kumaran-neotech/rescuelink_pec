@@ -57,7 +57,7 @@ Each emergency request generates:
 
 Stores GPS coordinates when available.
 
-### 👨‍🚒 Volunteer Dashboard
+###  Volunteer Dashboard
 
 Rescue teams can:
 
@@ -66,7 +66,7 @@ Rescue teams can:
 - Track emergencies
 - Update rescue status
 
-### 📱 Offline First Design
+###  Offline First Design
 
 Core functionality works even without:
 
